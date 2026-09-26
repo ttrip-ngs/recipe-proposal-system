@@ -1,0 +1,816 @@
+# 自動生成ファイル. 手で編集しない (scripts/import_retail_prices.py で再生成する).
+# 出典: 総務省 小売物価統計調査(動向編) 主要品目の都市別小売価格
+source: 小売物価統計調査(動向編) 主要品目の都市別小売価格
+source_url: https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040506177&fileKind=0
+area: 福岡市
+period: 2026-08
+generated_at: '2026-09-26'
+items:
+  1001:
+    name: うるち米(単一原料米，「コシヒカリ」)
+    unit: 1袋･5kg
+    price_jpy: 3885
+  1002:
+    name: うるち米(単一原料米，「コシヒカリ」以外)
+    unit: 1袋･5kg
+    price_jpy: 3543
+  1021:
+    name: 食パン
+    unit: 1kg
+    price_jpy: 502
+  1022:
+    name: あんパン
+    unit: 100g
+    price_jpy: 108
+  1023:
+    name: カレーパン
+    unit: 100g
+    price_jpy: 139
+  1031:
+    name: ゆでうどん
+    unit: 1kg
+    price_jpy: 248
+  1041:
+    name: そうめん
+    unit: 1袋･300g
+    price_jpy: 368
+  1042:
+    name: スパゲッティ
+    unit: 1kg
+    price_jpy: 723
+  1051:
+    name: カップ麺
+    unit: 1個･78g
+    price_jpy: 187
+  1052:
+    name: 中華麺
+    unit: 1kg
+    price_jpy: 462
+  1071:
+    name: 小麦粉
+    unit: 1袋･1kg
+    price_jpy: 369
+  1081:
+    name: もち
+    unit: 1袋･1kg
+    price_jpy: 1122
+  1090:
+    name: シリアル
+    unit: 1kg
+    price_jpy: 1227
+  1101:
+    name: まぐろ
+    unit: 100g
+    price_jpy: 617
+  1102:
+    name: あじ
+    unit: 100g
+    price_jpy: 164
+  1103:
+    name: いわし
+    unit: 100g
+    price_jpy: 110
+  1106:
+    name: さけ
+    unit: 100g
+    price_jpy: 558
+  1107:
+    name: さば
+    unit: 100g
+    price_jpy: 162
+  1108:
+    name: さんま
+    unit: 100g
+    price_jpy: 196
+  1110:
+    name: たい
+    unit: 100g
+    price_jpy: 745
+  1111:
+    name: ぶり
+    unit: 100g
+    price_jpy: 579
+  1112:
+    name: いか
+    unit: 100g
+    price_jpy: 405
+  1113:
+    name: たこ
+    unit: 100g
+    price_jpy: 526
+  1114:
+    name: えび
+    unit: 100g
+    price_jpy: 419
+  1116:
+    name: かつお
+    unit: 100g
+    price_jpy: 337
+  1131:
+    name: あさり
+    unit: 100g
+    price_jpy: 140
+  1133:
+    name: ほたて貝
+    unit: 100g
+    price_jpy: 492
+  1141:
+    name: 塩さけ
+    unit: 100g
+    price_jpy: 301
+  1142:
+    name: たらこ
+    unit: 100g
+    price_jpy: 523
+  1143:
+    name: しらす干し
+    unit: 100g
+    price_jpy: 831
+  1144:
+    name: 干しあじ
+    unit: 100g
+    price_jpy: 218
+  1146:
+    name: 煮干し
+    unit: 100g
+    price_jpy: 307
+  1150:
+    name: ししゃも
+    unit: 100g
+    price_jpy: 284
+  1151:
+    name: 揚げかまぼこ
+    unit: 100g
+    price_jpy: 139
+  1152:
+    name: ちくわ
+    unit: 100g
+    price_jpy: 132
+  1153:
+    name: かまぼこ
+    unit: 100g
+    price_jpy: 167
+  1161:
+    name: かつお節
+    unit: 100g
+    price_jpy: 1565
+  1165:
+    name: 魚介漬物
+    unit: 100g
+    price_jpy: 395
+  1166:
+    name: 魚介つくだ煮
+    unit: 100g
+    price_jpy: 500
+  1167:
+    name: いくら
+    unit: 100g
+    price_jpy: 1615
+  1168:
+    name: 塩さば
+    unit: 100g
+    price_jpy: 258
+  1173:
+    name: 魚介缶詰
+    unit: 1缶･70g
+    price_jpy: 130
+  1201:
+    name: 牛肉(国産品)
+    unit: 100g
+    price_jpy: 838
+  1203:
+    name: 牛肉(輸入品)
+    unit: 100g
+    price_jpy: 433
+  1211:
+    name: 豚肉(国産品，バラ)
+    unit: 100g
+    price_jpy: 320
+  1214:
+    name: 豚肉(輸入品，ロース)
+    unit: 100g
+    price_jpy: 168
+  1221:
+    name: 鶏肉
+    unit: 100g
+    price_jpy: 144
+  1252:
+    name: ハム
+    unit: 100g
+    price_jpy: 217
+  1261:
+    name: ソーセージ
+    unit: 100g
+    price_jpy: 187
+  1271:
+    name: ベーコン
+    unit: 100g
+    price_jpy: 254
+  1292:
+    name: 味付け肉
+    unit: 100g
+    price_jpy: 160
+  1303:
+    name: 牛乳
+    unit: 1本･1,000mL
+    price_jpy: 281
+  1311:
+    name: 粉ミルク
+    unit: 1缶･780g
+    price_jpy: 2799
+  1321:
+    name: バター
+    unit: 1箱･200g
+    price_jpy: 581
+  1331:
+    name: チーズ(国産品)
+    unit: 100g
+    price_jpy: 303
+  1332:
+    name: チーズ(輸入品)
+    unit: 1個･125g
+    price_jpy: 911
+  1333:
+    name: ヨーグルト
+    unit: 1個･400g
+    price_jpy: 206
+  1341:
+    name: 鶏卵
+    unit: 1パック･10個
+    price_jpy: 342
+  1401:
+    name: キャベツ
+    unit: 1kg
+    price_jpy: 270
+  1402:
+    name: ほうれんそう
+    unit: 1kg
+    price_jpy: 1830
+  1403:
+    name: はくさい
+    unit: 1kg
+    price_jpy: 361
+  1405:
+    name: ねぎ
+    unit: 1kg
+    price_jpy: 1103
+  1406:
+    name: レタス
+    unit: 1kg
+    price_jpy: 520
+  1407:
+    name: もやし
+    unit: 1kg
+    price_jpy: 253
+  1409:
+    name: ブロッコリー
+    unit: 1kg
+    price_jpy: 881
+  1410:
+    name: アスパラガス
+    unit: 1kg
+    price_jpy: 2014
+  1411:
+    name: さつまいも
+    unit: 1kg
+    price_jpy: 640
+  1412:
+    name: じゃがいも
+    unit: 1kg
+    price_jpy: 618
+  1413:
+    name: さといも
+    unit: 1kg
+    price_jpy: 1158
+  1414:
+    name: だいこん
+    unit: 1kg
+    price_jpy: 315
+  1415:
+    name: にんじん
+    unit: 1kg
+    price_jpy: 471
+  1416:
+    name: ごぼう
+    unit: 1kg
+    price_jpy: 1126
+  1417:
+    name: たまねぎ
+    unit: 1kg
+    price_jpy: 352
+  1419:
+    name: れんこん
+    unit: 1kg
+    price_jpy: 1075
+  1420:
+    name: ながいも
+    unit: 1kg
+    price_jpy: 911
+  1421:
+    name: しょうが
+    unit: 1kg
+    price_jpy: 2171
+  1430:
+    name: えだまめ
+    unit: 1kg
+    price_jpy: 1683
+  1432:
+    name: さやいんげん
+    unit: 1kg
+    price_jpy: 4890
+  1433:
+    name: かぼちゃ
+    unit: 1kg
+    price_jpy: 715
+  1434:
+    name: きゅうり
+    unit: 1kg
+    price_jpy: 915
+  1435:
+    name: なす
+    unit: 1kg
+    price_jpy: 815
+  1436:
+    name: トマト
+    unit: 1kg
+    price_jpy: 1009
+  1437:
+    name: ピーマン
+    unit: 1kg
+    price_jpy: 989
+  1438:
+    name: 生しいたけ
+    unit: 1kg
+    price_jpy: 1790
+  1442:
+    name: えのきたけ
+    unit: 1kg
+    price_jpy: 660
+  1443:
+    name: しめじ
+    unit: 1kg
+    price_jpy: 679
+  1444:
+    name: カット野菜
+    unit: 1kg
+    price_jpy: 758
+  1453:
+    name: 干ししいたけ
+    unit: 100g
+    price_jpy: 2152
+  1461:
+    name: 干しのり
+    unit: 1袋･10枚
+    price_jpy: 559
+  1462:
+    name: わかめ
+    unit: 100g
+    price_jpy: 2041
+  1463:
+    name: こんぶ
+    unit: 100g
+    price_jpy: 1339
+  1464:
+    name: ひじき
+    unit: 100g
+    price_jpy: 2331
+  1471:
+    name: 豆腐
+    unit: 1kg
+    price_jpy: 275
+  1472:
+    name: 油揚げ
+    unit: 1kg
+    price_jpy: 2081
+  1473:
+    name: 納豆
+    unit: 1ﾊﾟｯｸ･50g×3又は45g×3
+    price_jpy: 136
+  1481:
+    name: こんにゃく
+    unit: 1kg
+    price_jpy: 468
+  1482:
+    name: 梅干し
+    unit: 1kg
+    price_jpy: 3558
+  1483:
+    name: だいこん漬
+    unit: 1kg
+    price_jpy: 996
+  1485:
+    name: こんぶつくだ煮
+    unit: 1kg
+    price_jpy: 3469
+  1486:
+    name: はくさい漬
+    unit: 1kg
+    price_jpy: 1105
+  1487:
+    name: キムチ
+    unit: 1kg
+    price_jpy: 1168
+  1491:
+    name: 野菜缶詰
+    unit: 1kg
+    price_jpy: 1292
+  1502:
+    name: りんご
+    unit: 1kg
+    price_jpy: 1174
+  1515:
+    name: オレンジ
+    unit: 1kg
+    price_jpy: 798
+  1521:
+    name: 梨
+    unit: 1kg
+    price_jpy: 1362
+  1531:
+    name: ぶどう(デラウェア)
+    unit: 1kg
+    price_jpy: 2091
+  1532:
+    name: ぶどう(巨峰)
+    unit: 1kg
+    price_jpy: 2339
+  1533:
+    name: ぶどう(シャインマスカット)
+    unit: 1kg
+    price_jpy: 4001
+  1551:
+    name: 桃
+    unit: 1kg
+    price_jpy: 1818
+  1561:
+    name: すいか
+    unit: 1kg
+    price_jpy: 559
+  1563:
+    name: メロン
+    unit: 1kg
+    price_jpy: 1077
+  1581:
+    name: バナナ
+    unit: 1kg
+    price_jpy: 364
+  1582:
+    name: キウイフルーツ
+    unit: 1kg
+    price_jpy: 1154
+  1583:
+    name: アボカド
+    unit: 1kg
+    price_jpy: 1166
+  1584:
+    name: パイナップル
+    unit: 1kg
+    price_jpy: 1599
+  1594:
+    name: ナッツ
+    unit: 100g
+    price_jpy: 309
+  1601:
+    name: 食用油
+    unit: 1本･900g
+    price_jpy: 326
+  1602:
+    name: マーガリン
+    unit: 1kg
+    price_jpy: 1038
+  1611:
+    name: 食塩
+    unit: 1袋･1kg
+    price_jpy: 122
+  1621:
+    name: しょう油
+    unit: 1本･450mL
+    price_jpy: 306
+  1631:
+    name: みそ
+    unit: 1個･750g
+    price_jpy: 349
+  1632:
+    name: 砂糖
+    unit: 1袋･1kg
+    price_jpy: 275
+  1633:
+    name: 酢
+    unit: 1本･500mL
+    price_jpy: 149
+  1641:
+    name: ソース
+    unit: 1本･500mL
+    price_jpy: 300
+  1642:
+    name: ケチャップ
+    unit: 1本･500g
+    price_jpy: 290
+  1643:
+    name: マヨネーズ
+    unit: 1kg
+    price_jpy: 788
+  1644:
+    name: ジャム
+    unit: 1個･150g
+    price_jpy: 284
+  1645:
+    name: ドレッシング
+    unit: 1本･380mL
+    price_jpy: 387
+  1652:
+    name: カレールウ
+    unit: 1箱･12皿分
+    price_jpy: 308
+  1653:
+    name: 乾燥スープ
+    unit: 1箱･148.8g
+    price_jpy: 360
+  1654:
+    name: 風味調味料
+    unit: 100g
+    price_jpy: 304
+  1655:
+    name: つゆ・たれ(焼肉のたれ)
+    unit: 1本･360g
+    price_jpy: 364
+  1656:
+    name: ふりかけ
+    unit: 1袋･52g
+    price_jpy: 209
+  1657:
+    name: 合わせ調味料
+    unit: 1箱･162g
+    price_jpy: 241
+  1658:
+    name: パスタソース
+    unit: 100g
+    price_jpy: 105
+  1659:
+    name: つゆ・たれ(めんつゆ)
+    unit: 1本･1L
+    price_jpy: 363
+  1660:
+    name: 香辛料
+    unit: 1箱･43g
+    price_jpy: 165
+  1701:
+    name: ようかん
+    unit: 100g
+    price_jpy: 157
+  1702:
+    name: まんじゅう
+    unit: 100g
+    price_jpy: 161
+  1703:
+    name: だいふく餅
+    unit: 100g
+    price_jpy: 124
+  1711:
+    name: カステラ
+    unit: 100g
+    price_jpy: 212
+  1712:
+    name: ケーキ
+    unit: 1個
+    price_jpy: 542
+  1713:
+    name: シュークリーム
+    unit: 100g
+    price_jpy: 124
+  1714:
+    name: プリン
+    unit: 1個
+    price_jpy: 193
+  1715:
+    name: ロールケーキ
+    unit: 1本
+    price_jpy: 1421
+  1721:
+    name: ビスケット
+    unit: 100g
+    price_jpy: 165
+  1732:
+    name: キャンデー
+    unit: 1袋
+    price_jpy: 232
+  1741:
+    name: せんべい
+    unit: 100g
+    price_jpy: 189
+  1761:
+    name: チョコレート
+    unit: 100g
+    price_jpy: 444
+  1772:
+    name: 落花生
+    unit: 100g
+    price_jpy: 193
+  1781:
+    name: チューインガム
+    unit: 1個･14粒
+    price_jpy: 165
+  1782:
+    name: アイスクリーム
+    unit: 1個･110mL
+    price_jpy: 319
+  1783:
+    name: ポテトチップス
+    unit: 100g
+    price_jpy: 193
+  1784:
+    name: ゼリー
+    unit: 100g
+    price_jpy: 70
+  1785:
+    name: グミ
+    unit: 1袋･54～56g
+    price_jpy: 157
+  1790:
+    name: 無菌包装米飯
+    unit: 100g
+    price_jpy: 129
+  1791:
+    name: 弁当(幕の内弁当)
+    unit: 1個
+    price_jpy: 690
+  1792:
+    name: 調理パン
+    unit: 100g
+    price_jpy: 231
+  1793:
+    name: おにぎり
+    unit: 1個
+    price_jpy: 158
+  1794:
+    name: 冷凍米飯
+    unit: 100g
+    price_jpy: 114
+  1795:
+    name: すし(弁当)(にぎりずし)
+    unit: 1パック
+    price_jpy: 1090
+  1796:
+    name: 調理パスタ
+    unit: 1袋･260～330g
+    price_jpy: 290
+  1797:
+    name: 弁当(からあげ弁当)
+    unit: 1個
+    price_jpy: 590
+  1798:
+    name: すし(弁当)(いなりずし)
+    unit: 1個
+    price_jpy: 78
+  1799:
+    name: 調理ピザ
+    unit: 1袋
+    price_jpy: 344
+  1801:
+    name: うなぎかば焼き
+    unit: 100g
+    price_jpy: 1269
+  1802:
+    name: 焼き魚
+    unit: 100g
+    price_jpy: 384
+  1811:
+    name: サラダ
+    unit: 100g
+    price_jpy: 162
+  1812:
+    name: 煮豆
+    unit: 100g
+    price_jpy: 166
+  1813:
+    name: きんぴら
+    unit: 100g
+    price_jpy: 257
+  1814:
+    name: 焼豚
+    unit: 100g
+    price_jpy: 220
+  1821:
+    name: コロッケ
+    unit: 100g
+    price_jpy: 134
+  1831:
+    name: 豚カツ
+    unit: 100g
+    price_jpy: 301
+  1842:
+    name: からあげ
+    unit: 100g
+    price_jpy: 260
+  1843:
+    name: やきとり
+    unit: 1本
+    price_jpy: 137
+  1844:
+    name: ハンバーグ
+    unit: 1パック･246g
+    price_jpy: 340
+  1851:
+    name: 冷凍調理コロッケ
+    unit: 100g
+    price_jpy: 219
+  1852:
+    name: 冷凍調理ハンバーグ
+    unit: 100g
+    price_jpy: 199
+  1853:
+    name: 冷凍ぎょうざ
+    unit: 100g
+    price_jpy: 94
+  1862:
+    name: 弁当(カツ丼)
+    unit: 1個
+    price_jpy: 622
+  1863:
+    name: たこ焼き
+    unit: 100g
+    price_jpy: 117
+  1871:
+    name: 調理カレー
+    unit: 1箱･180g
+    price_jpy: 144
+  1881:
+    name: ぎょうざ
+    unit: 100g
+    price_jpy: 97
+  1891:
+    name: 混ぜごはんのもと
+    unit: 1箱･134g
+    price_jpy: 241
+  1892:
+    name: サラダチキン
+    unit: 100g
+    price_jpy: 275
+  1894:
+    name: ミートボール
+    unit: 100g
+    price_jpy: 133
+  1902:
+    name: 緑茶
+    unit: 100g
+    price_jpy: 705
+  1911:
+    name: 紅茶
+    unit: 10袋
+    price_jpy: 122
+  1915:
+    name: 茶飲料
+    unit: 1,000mL
+    price_jpy: 148
+  1921:
+    name: インスタントコーヒー
+    unit: 100g
+    price_jpy: 1064
+  1922:
+    name: コーヒー豆
+    unit: 100g
+    price_jpy: 336
+  1923:
+    name: コーヒー飲料(セルフ式を除く。)
+    unit: 1,000mL
+    price_jpy: 157
+  1930:
+    name: 果実飲料(濃縮還元)
+    unit: 1,000mL
+    price_jpy: 415
+  1931:
+    name: 果実飲料(果汁20～50%)
+    unit: 1本･1,500mL
+    price_jpy: 295
+  1941:
+    name: 野菜ジュース
+    unit: 1本･200mL
+    price_jpy: 122
+  1951:
+    name: コーラ
+    unit: 1,000mL
+    price_jpy: 241
+  1952:
+    name: ノンアルコールビール
+    unit: 1パック･350mL×6
+    price_jpy: 737
+  1953:
+    name: 炭酸水
+    unit: 1本･500mL
+    price_jpy: 103
+  1981:
+    name: スポーツドリンク
+    unit: 1本･500mL
+    price_jpy: 119
+  1982:
+    name: ミネラルウォーター(配達を除く。)
+    unit: 1本･2,000mL
+    price_jpy: 124
+  1983:
+    name: 豆乳
+    unit: 1本･1,000mL
+    price_jpy: 268
+  1985:
+    name: ゼリー飲料
+    unit: 1個･180g
+    price_jpy: 203

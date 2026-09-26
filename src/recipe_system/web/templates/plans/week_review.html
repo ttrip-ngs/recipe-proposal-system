@@ -1,0 +1,176 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero, kicker, status_badge, allergen_callout, dish_details %}
+{% set nav_section = 'week' %}
+{% set weekday_jp = ["月","火","水","木","金","土","日"] %}
+{% set has_pending = pending_count > 0 %}
+{% block title %}週レビュー {{ week.label }} | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{{ editorial_hero(
+    headline_text="週レビュー",
+    date_text=week.label,
+    meta_html="<strong>確定可 %d</strong> / 生成中 %d"|format(confirmable_count, pending_count)
+) }}
+
+<nav class="cluster mb-3" aria-label="週ナビ">
+  <a href="/plans/week/{{ week.prev_week_start.isoformat() }}/review" class="btn btn--quiet btn--sm">← 前週</a>
+  <a href="/calendar/week?start={{ week.week_start.isoformat() }}" class="btn btn--ghost btn--sm">週ビューへ</a>
+  <a href="/plans/week/{{ week.next_week_start.isoformat() }}/review" class="btn btn--quiet btn--sm ml-auto">翌週 →</a>
+</nav>
+
+<div class="card is-stagger"{% if has_pending %} data-poll-url="/plans/week/{{ week.week_start.isoformat() }}/status"{% endif %}>
+  <header class="card__head">
+    <h2 class="headline headline--h3">操作</h2>
+    <span class="card__meta">
+      {% if is_past_week %}
+        過去週 (操作不可)
+      {% elif has_pending %}
+        生成中 {{ pending_count }} 日 — 完了すると自動で表示されます <span data-poll-elapsed></span>
+      {% elif confirmable_count > 0 %}
+        確定可 {{ confirmable_count }} 日
+      {% else %}
+        確定対象なし
+      {% endif %}
+    </span>
+  </header>
+
+  {% if has_pending %}
+    <p class="muted subtle">週間提案は 3 分ほどかかることがあります。</p>
+    <p class="muted subtle" data-poll-timeout-message hidden>生成に時間がかかっています。ページを再読み込みして状況を確認してください。</p>
+  {% endif %}
+
+  {% if not is_past_week %}
+    <div class="action-bar action-bar--sticky">
+      {% if confirmable_count > 0 %}
+        <form method="post" action="/plans/week/{{ week.week_start.isoformat() }}/confirm-all" class="inline">
+          <button type="submit" class="btn"{% if has_pending %} disabled aria-disabled="true"{% endif %}>
+            {{ confirmable_count }} 日分をまとめて確定
+          </button>
+        </form>
+      {% endif %}
+      <form method="post" action="/plans/week/{{ week.week_start.isoformat() }}/propose" class="inline">
+        <button type="submit" class="btn btn--outline"{% if has_pending %} disabled aria-disabled="true"{% endif %}>
+          空き日に提案を生成
+        </button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+{% if costs_by_date %}
+<article class="card is-stagger mt-5">
+  <header class="card__head">
+    <h2 class="headline headline--h3">概算食材費</h2>
+    <span class="card__meta tnum"><strong>{{ "{:,}".format(week_cost.total_jpy) }} 円</strong> / {{ costs_by_date|length }} 日分</span>
+  </header>
+  <p class="muted subtle">
+    {{ price_book.area }}の小売物価統計 ({{ price_book.period }}) をもとに、使用量で按分した目安です。
+    {% if week_cost.unpriced %}価格不明 {{ week_cost.unpriced|length }} 品目は含みません。{% endif %}
+    {% if week_cost.pantry_count %}調味料などの常備品 {{ week_cost.pantry_count }} 品目は対象外です。{% endif %}
+  </p>
+  {% if week_cost.unpriced %}
+    <details>
+      <summary>価格不明の食材</summary>
+      <ul class="plain mt-2">
+        {% for item in week_cost.unpriced %}
+          <li>{{ item.name }}{% if item.quantity is not none %} <span class="muted tnum">— {{ "%g"|format(item.quantity) }}{{ item.unit or "" }}</span>{% endif %} <span class="muted">({{ item.reason }})</span></li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</article>
+{% endif %}
+
+<section class="stack is-stagger mt-5" aria-label="7 日分の提案">
+  {% for cell in week.days %}
+    {% set plan = cell.meal_plan %}
+    {% set proposal = proposals_by_date[cell.iso] %}
+    {% set is_today = cell.is_today %}
+    {% set is_past = cell.is_past %}
+    {% set day_pending = plan and plan.status == "proposed" and not plan.dishes %}
+    <article class="card day-review{% if is_today %} day-review--today{% endif %}">
+      <header class="card__head">
+        <span class="kicker">
+          {{ cell.plan_date.month }}/{{ cell.plan_date.day }} ({{ weekday_jp[cell.plan_date.weekday()] }})
+          {% if is_today %}<span class="badge badge--plain">本日</span>{% endif %}
+        </span>
+        {{ status_badge(cell.status) }}
+      </header>
+
+      {% if day_pending %}
+        <h3 class="headline headline--h3">考え中...</h3>
+        <p class="lede">家族の情報と履歴をふまえて LLM が献立を組み立てています。</p>
+
+      {% elif plan and plan.status == "skipped" %}
+        <h3 class="headline headline--h3">この日はスキップ</h3>
+        <p class="muted">外食などの理由でスキップ扱いです。</p>
+        {% if not is_past %}
+          <div class="action-bar">
+            <form method="post" action="/plans/{{ cell.iso }}/clear" class="inline">
+              <button type="submit" class="btn btn--ghost btn--sm">スキップを解除</button>
+            </form>
+          </div>
+        {% endif %}
+
+      {% elif plan and plan.dishes %}
+        <h3 class="headline headline--h3">{{ plan.dishes[0].name }}</h3>
+        {% set day_cost = costs_by_date.get(cell.iso) %}
+        {% if day_cost %}
+          <p class="muted tnum">概算 {{ "{:,}".format(day_cost.total_jpy) }} 円{% if day_cost.unpriced %} (価格不明 {{ day_cost.unpriced|length }} 品目を除く){% endif %}</p>
+        {% endif %}
+        {% if proposal and proposal.violations %}
+          {{ allergen_callout(proposal.violations) }}
+        {% endif %}
+        <div class="stack">
+          {% for dish in plan.dishes %}
+            <div class="dish-card">
+              <div class="dish-card__head">
+                <span class="badge badge--plain">{{ dish.category }}</span>
+                <span class="dish-card__name">{{ dish.name }}</span>
+              </div>
+              {% if dish.reason %}
+                <p class="muted">{{ dish.reason }}</p>
+              {% endif %}
+              {{ dish_details(dish) }}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="action-bar">
+          {% if plan.status == "proposed" %}
+            <form method="post" action="/plans/{{ cell.iso }}/confirm" class="inline">
+              <button type="submit" class="btn btn--sm">この日を確定</button>
+            </form>
+          {% endif %}
+          {% if plan.status in ["proposed", "confirmed"] %}
+            <form method="post" action="/plans/{{ cell.iso }}/cooked" class="inline">
+              <button type="submit" class="btn btn--outline btn--sm">調理済にする</button>
+            </form>
+          {% endif %}
+          {% if not is_past and plan.status != "cooked" %}
+            <form method="post" action="/plans/{{ cell.iso }}/propose" class="inline">
+              <button type="submit" class="btn btn--ghost btn--sm">別案を提案</button>
+            </form>
+          {% endif %}
+          <a href="/plans/{{ cell.iso }}" class="btn btn--quiet btn--sm ml-auto">詳細</a>
+        </div>
+
+      {% else %}
+        <h3 class="headline headline--h3">未定</h3>
+        <p class="muted">この日の提案はまだありません。</p>
+        {% if not is_past %}
+          <div class="action-bar">
+            <form method="post" action="/plans/{{ cell.iso }}/propose" class="inline">
+              <button type="submit" class="btn btn--ghost btn--sm">この日を提案</button>
+            </form>
+            <form method="post" action="/plans/{{ cell.iso }}/skip" class="inline">
+              <button type="submit" class="btn btn--quiet btn--sm">スキップ</button>
+            </form>
+          </div>
+        {% endif %}
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+
+{% endblock %}

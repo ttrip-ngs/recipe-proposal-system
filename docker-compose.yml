@@ -1,0 +1,38 @@
+# ローカル開発・統合テスト用の Firebase エミュレータ一式.
+# 使い方:
+#   docker compose up -d         # Firestore + Auth エミュレータを起動
+#   docker compose down          # 停止
+#   docker compose logs -f       # ログ追尾
+#
+# イメージ andreysenov/firebase-tools は node + openjdk を含む. Firebase Emulator
+# Suite の Firestore / Auth は Java ランタイムを要求するため, 公式 node:20 等の
+# Java 未搭載イメージでは起動に失敗する.
+
+services:
+  firebase-emulators:
+    image: andreysenov/firebase-tools:13.29.1
+    working_dir: /home/node
+    command: >
+      firebase emulators:start
+        --only firestore,auth
+        --project recipe-system-dev
+        --import /home/node/emulator-data
+        --export-on-exit /home/node/emulator-data
+    ports:
+      - "8080:8080"   # Firestore
+      - "9099:9099"   # Auth
+      - "4000:4000"   # Emulator UI
+    volumes:
+      # コンテナでは 0.0.0.0 にバインドしないとホストから接続できないため
+      # 専用の firebase.docker.json を firebase.json としてマウントする.
+      - ./firebase.docker.json:/home/node/firebase.json:ro
+      - ./firestore.rules:/home/node/firestore.rules:ro
+      - ./firestore.indexes.json:/home/node/firestore.indexes.json:ro
+      - ./emulator-data:/home/node/emulator-data
+    environment:
+      - FIREBASE_CLI_EXPERIMENTS=1
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10

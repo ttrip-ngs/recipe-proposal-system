@@ -1,0 +1,79 @@
+# 定番レシピサンプル.
+# MVP 時は 100 品を目標に手動投入. ここでは代表的なものを数品置いておく.
+# ingredients の name は canonical 名を優先 (辞書によって allergen_tags が自動付与される).
+recipes:
+  - name: 肉じゃが
+    category: 主菜
+    main_ingredient: 牛肉
+    ingredients:
+      - {name: 牛肉, quantity: 300, unit: g}
+      - {name: じゃがいも, quantity: 4, unit: 個}
+      - {name: たまねぎ, quantity: 1, unit: 個}
+      - {name: にんじん, quantity: 1, unit: 本}
+    steps:
+      - 牛肉を一口大に切る
+      - じゃがいも・にんじんを乱切り、たまねぎはくし切りにする
+      - 鍋に油をひいて牛肉を炒め、野菜を加えて炒める
+      - 水・醤油・砂糖・みりんを加えて落とし蓋で 20 分煮る
+    tags: [和食, 煮物]
+    servings: 4
+    source: null
+
+  - name: 鶏の照り焼き
+    category: 主菜
+    main_ingredient: 鶏肉
+    ingredients:
+      - {name: 鶏もも肉, quantity: 2, unit: 枚}
+      - {name: 醤油, quantity: 3, unit: 大さじ}
+      - {name: みりん, quantity: 3, unit: 大さじ}
+      - {name: 砂糖, quantity: 1, unit: 大さじ}
+    steps:
+      - 鶏もも肉の皮をフォークで刺して余分な水分を拭く
+      - フライパンで皮目から焼き、裏返して蓋をして蒸し焼き
+      - たれを加えて煮絡める
+    tags: [和食, 焼き物]
+    servings: 4
+    source: null
+
+  - name: ほうれん草のおひたし
+    category: 副菜
+    main_ingredient: ほうれん草
+    ingredients:
+      - {name: ほうれん草, quantity: 1, unit: 束}
+      - {name: 醤油, quantity: 1, unit: 小さじ}
+      - {name: 鰹節, quantity: 1, unit: パック}
+    steps:
+      - ほうれん草を塩茹でして水にさらす
+      - 水気を絞って 4cm に切る
+      - 醤油をかけ、鰹節を乗せる
+    tags: [和食, 副菜]
+    servings: 4
+
+  - name: 豆腐とわかめの味噌汁
+    category: 汁物
+    main_ingredient: 豆腐
+    ingredients:
+      - {name: 豆腐, quantity: 150, unit: g}
+      - {name: わかめ, quantity: 5, unit: g}
+      - {name: 味噌, quantity: 2, unit: 大さじ}
+      - {name: 出汁, quantity: 600, unit: ml}
+    steps:
+      - 出汁を温めて豆腐と戻したわかめを加える
+      - 火を止めて味噌を溶く
+    tags: [和食, 汁物]
+    servings: 4
+
+  - name: 豚の生姜焼き
+    category: 主菜
+    main_ingredient: 豚肉
+    ingredients:
+      - {name: 豚ロース, quantity: 400, unit: g}
+      - {name: たまねぎ, quantity: 1, unit: 個}
+      - {name: 生姜, quantity: 1, unit: 片}
+      - {name: 醤油, quantity: 3, unit: 大さじ}
+    steps:
+      - 豚ロースに下味をつける
+      - フライパンで豚肉を焼き、薄切り玉ねぎを加える
+      - おろし生姜と調味料を加えて煮絡める
+    tags: [和食, 焼き物]
+    servings: 4

@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero, kicker, allergen_checkboxes %}
+{% set nav_section = 'family' %}
+{% block title %}{{ family.name }} の編集 | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{{ editorial_hero(
+    headline_text=family.name|string + " — 編集",
+    meta_html="メンバー <strong>%d 名</strong> · 許可メール %d 件"|format(family.members|length, family.allowed_emails|length)
+) }}
+
+<nav class="cluster mb-4">
+  <a href="/profile" class="btn btn--ghost btn--sm">← 閲覧に戻る</a>
+</nav>
+
+<article class="card is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">家族情報</h2>
+  </header>
+  <form method="post" action="/profile/meta" class="form-stack form-narrow">
+    <label class="field">
+      <strong>家族名</strong>
+      <input type="text" name="name" value="{{ family.name }}" required autocomplete="off">
+    </label>
+    <label class="field">
+      <strong>許可メール (カンマ区切り / 改行可)</strong>
+      <textarea name="allowed_emails_csv" rows="3" required autocomplete="off" autocapitalize="off">{{ family.allowed_emails | sort | join(", ") }}</textarea>
+    </label>
+    <button type="submit" class="btn">家族情報を保存</button>
+  </form>
+</article>
+
+<article class="card is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">メンバー</h2>
+    <span class="card__meta">{{ family.members|length }} 名</span>
+  </header>
+  {% for member in family.members %}
+    <details class="member-edit" {% if loop.first %}open{% endif %}>
+      <summary>
+        <strong>{{ member.name }}</strong>
+        {% if member.role %}<span class="chip">{{ member.role }}</span>{% endif %}
+        {% if member.allergens %}<span class="chip chip--danger">アレルギー {{ member.allergens|length }} 件</span>{% endif %}
+      </summary>
+      <form method="post" action="/profile/members/{{ member.member_id }}" class="form-stack mt-3">
+        <div class="form-row">
+          <label class="field">
+            <strong>名前</strong>
+            <input type="text" name="name" value="{{ member.name }}" required autocomplete="off">
+          </label>
+          <label class="field">
+            <strong>役割 (任意)</strong>
+            <input type="text" name="role" value="{{ member.role or '' }}" placeholder="adult / child など" autocomplete="off">
+          </label>
+        </div>
+        {{ allergen_checkboxes(allergen_groups, member.allergens, 'm-' + member.member_id) }}
+        <label class="field">
+          <strong>嫌いな食材 (カンマ区切り)</strong>
+          <input type="text" name="dislikes_csv" value="{{ member.dislikes | sort | join(', ') }}" autocomplete="off">
+        </label>
+        <label class="field">
+          <strong>好きな食材 (カンマ区切り)</strong>
+          <input type="text" name="likes_csv" value="{{ member.likes | sort | join(', ') }}" autocomplete="off">
+        </label>
+        <label class="field">
+          <strong>メモ (医療上の注意など、任意)</strong>
+          <textarea name="notes" rows="3">{{ member.notes or '' }}</textarea>
+        </label>
+        <div class="actions">
+          <button type="submit" class="btn">保存</button>
+        </div>
+      </form>
+      <form method="post" action="/profile/members/{{ member.member_id }}/delete"
+            class="mt-3"
+            onsubmit="return confirm('{{ member.name }} を削除しますか?');">
+        <button type="submit" class="btn btn--danger-ghost btn--sm">このメンバーを削除</button>
+      </form>
+    </details>
+  {% endfor %}
+</article>
+
+<article class="card card--inset is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">メンバー追加</h2>
+  </header>
+  <form method="post" action="/profile/members" class="form-stack form-narrow">
+    <div class="form-row">
+      <label class="field">
+        <strong>名前</strong>
+        <input type="text" name="name" required autocomplete="off">
+      </label>
+      <label class="field">
+        <strong>役割 (任意)</strong>
+        <input type="text" name="role" placeholder="adult / child など" autocomplete="off">
+      </label>
+    </div>
+    {{ allergen_checkboxes(allergen_groups, [], 'new-member') }}
+    <label class="field">
+      <strong>嫌いな食材 (カンマ区切り)</strong>
+      <input type="text" name="dislikes_csv" autocomplete="off">
+    </label>
+    <label class="field">
+      <strong>好きな食材 (カンマ区切り)</strong>
+      <input type="text" name="likes_csv" autocomplete="off">
+    </label>
+    <label class="field">
+      <strong>メモ (任意)</strong>
+      <textarea name="notes" rows="3"></textarea>
+    </label>
+    <button type="submit" class="btn">メンバーを追加</button>
+  </form>
+</article>
+
+{% endblock %}

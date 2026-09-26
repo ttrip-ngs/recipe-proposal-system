@@ -1,0 +1,20 @@
+# 直近履歴サンプル. family_id は family.example.yaml と対応.
+# recipe_id は recipes.example.yaml 投入後の Firestore ドキュメント ID と紐付ける.
+history:
+  - family_id: example-family
+    recipe_name: 鶏の照り焼き
+    cooked_at: "2026-04-17T18:30:00+09:00"
+    rating: 4
+    notes: "子供もよく食べた"
+
+  - family_id: example-family
+    recipe_name: 豚の生姜焼き
+    cooked_at: "2026-04-15T18:30:00+09:00"
+    rating: 3
+    notes: null
+
+  - family_id: example-family
+    recipe_name: 肉じゃが
+    cooked_at: "2026-04-12T18:30:00+09:00"
+    rating: 5
+    notes: "妻のリクエスト"

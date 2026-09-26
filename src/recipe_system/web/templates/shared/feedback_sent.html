@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{#
+  フィードバック送信完了画面. plans/day.html 経由・proposals 経由 (旧 URL 互換)
+  の両方から使う共通テンプレート. context:
+    heading, message, back_url, back_label, secondary_url, secondary_label
+    nav_section (省略可)
+#}
+{% block title %}{{ heading }} | 家庭の献立帖{% endblock %}
+{% block content %}
+<div class="card is-stagger">
+  <h1 class="headline headline--h2">{{ heading }}</h1>
+  <p class="muted">{{ message }}</p>
+  <div class="cluster mt-4">
+    <a href="{{ back_url }}" class="btn btn--outline">{{ back_label }}</a>
+    <a href="{{ secondary_url }}" class="btn btn--ghost">{{ secondary_label }}</a>
+  </div>
+</div>
+{% endblock %}

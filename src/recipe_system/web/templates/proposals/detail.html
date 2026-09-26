@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import dish_details %}
+{% block title %}提案結果 | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{% if proposal.accepted %}
+<div class="card is-stagger">
+  <div class="cluster">
+    <span class="badge badge--confirmed">採用済み</span>
+    <span class="muted">この提案を「作る」として記録しました。</span>
+    <span class="muted ml-auto"><a href="/history">履歴を見る</a> / <a href="/">新しい提案</a></span>
+  </div>
+</div>
+{% endif %}
+
+{% if proposal.status == "error" %}
+<article class="card card--danger is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">提案の生成に失敗しました</h2>
+  </header>
+  <p class="muted">{{ proposal.error_message or "時間を置いて再度お試しください。" }}</p>
+  <a href="/" class="btn btn--outline mt-3">トップに戻る</a>
+</article>
+{% elif not proposal.succeeded %}
+<article class="card card--danger is-stagger">
+  <header class="card__head card__head--stacked">
+    <span class="kicker kicker--danger">アレルゲン検証</span>
+    <h2 class="headline headline--h3">安全な提案を作成できませんでした</h2>
+  </header>
+  <p>家族のアレルギーや嫌いな食材の条件を満たす献立を組み立てられませんでした。</p>
+  <p class="muted">お手数ですが、候補レシピから手動でお選びいただくか、しばらく時間を置いて再度お試しください。</p>
+  <div class="cluster">
+    {% for v in proposal.violations or [] %}
+      <span class="badge-{{ v.severity }}">{{ v.member }}: {{ v.ingredient }} ({{ v.reason }})</span>
+    {% endfor %}
+  </div>
+  <a href="/" class="btn btn--outline mt-3">トップに戻る</a>
+</article>
+{% else %}
+
+<article class="card is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">今晩の提案</h2>
+  </header>
+  {% if proposal.overall_comment %}
+    <p class="muted">{{ proposal.overall_comment }}</p>
+  {% endif %}
+
+  <div class="stack">
+    {% for dish in proposal.dishes %}
+      <div class="dish-card">
+        <div class="dish-card__head">
+          <span class="badge badge--plain">{{ dish.category }}</span>
+          <span class="dish-card__name">{{ dish.name }}</span>
+        </div>
+        {% if dish.reason %}
+          <p class="muted">{{ dish.reason }}</p>
+        {% endif %}
+        {{ dish_details(dish) }}
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if proposal.violations %}
+    <p class="muted mt-3">参考: 以下の warn があります (提案は継続しています)。</p>
+    <ul class="plain mt-2">
+      {% for v in proposal.violations %}
+        <li><span class="badge-{{ v.severity }}">{{ v.severity }}</span> {{ v.member }}: {{ v.ingredient }} ({{ v.reason }})</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="action-bar action-bar--sticky">
+    <form method="post" action="/proposals/{{ proposal_id }}/accept" class="inline">
+      {% if proposal.accepted %}
+        <button type="submit" class="btn btn--outline" disabled>採用済み</button>
+      {% else %}
+        <button type="submit" class="btn">この提案で作る</button>
+      {% endif %}
+    </form>
+  </div>
+
+  <form method="post" action="/proposals/{{ proposal_id }}/feedback" class="form-stack mt-6">
+    <fieldset class="form-fieldset">
+      <legend class="kicker">フィードバック (任意)</legend>
+      <div class="choice-grid" role="radiogroup" aria-label="この提案の評価">
+        <label><input type="radio" name="rating" value="good" required> 良い</label>
+        <label><input type="radio" name="rating" value="neutral"> 普通</label>
+        <label><input type="radio" name="rating" value="pass"> 今度はパス</label>
+      </div>
+      <label class="field">
+        <strong>ひとこと (任意)</strong>
+        <textarea name="comment" rows="2" placeholder="ひとこと (任意)"></textarea>
+      </label>
+      <button type="submit" class="btn btn--ghost">送信</button>
+    </fieldset>
+  </form>
+</article>
+
+<p class="meta-footer">
+  prompt v{{ proposal.prompt_version }} / model {{ proposal.model }} / retry {{ proposal.retry_count or 0 }} / {{ proposal.latency_ms or 0 }}ms
+</p>
+
+{% endif %}
+{% endblock %}

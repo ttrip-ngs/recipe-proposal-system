@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero, kicker, chip %}
+{% set nav_section = 'family' %}
+{% block title %}{{ family.name }} | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{% set total_allergens = namespace(n=0) %}
+{% for m in family.members %}{% set total_allergens.n = total_allergens.n + (m.allergens|length) %}{% endfor %}
+{{ editorial_hero(
+    headline_text=family.name,
+    date_text="更新 " + (family.updated_at.strftime('%Y-%m-%d') if family.updated_at else '-'),
+    meta_html="メンバー <strong>%d 名</strong> · アレルゲン登録 %d 件"|format(family.members|length, total_allergens.n)
+) }}
+
+<nav class="cluster mb-4" aria-label="プロファイル操作">
+  <a href="/profile/edit" class="btn ml-auto">編集する</a>
+</nav>
+
+<div class="stack">
+  {% for member in family.members %}
+    <article class="member-card is-stagger">
+      <div class="member-card__avatar" aria-hidden="true">{{ member.name[:1] }}</div>
+      <div class="stack">
+        <header class="member-card__header">
+          <h2 class="member-card__name">{{ member.name }}</h2>
+          {% if member.role %}<span class="member-card__role">{{ member.role }}</span>{% endif %}
+        </header>
+
+        {% if member.allergens %}
+          <div>
+            <span class="kicker kicker--danger">アレルゲン ({{ member.allergens|length }})</span>
+            <div class="chip-cluster">
+              {% for a in member.allergens|sort %}{{ chip(a, 'danger') }}{% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if member.dislikes %}
+          <div>
+            <span class="kicker">嫌い ({{ member.dislikes|length }})</span>
+            <div class="chip-cluster">
+              {% for d in member.dislikes %}{{ chip(d) }}{% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if member.likes %}
+          <div>
+            <span class="kicker kicker--accent">好き ({{ member.likes|length }})</span>
+            <div class="chip-cluster">
+              {% for l in member.likes %}{{ chip(l, 'accent') }}{% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if member.notes %}
+          <p class="muted">{{ member.notes }}</p>
+        {% endif %}
+      </div>
+    </article>
+  {% endfor %}
+</div>
+
+{% endblock %}

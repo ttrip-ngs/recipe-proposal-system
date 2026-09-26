@@ -1,0 +1,27 @@
+name: detail_day_ingredients_user
+version: "2"
+description: |
+  1 日分の食材リストと作り方の生成の user プロンプト.
+  `dishes_json` は Python 側で ensure_ascii=False の JSON 文字列に整形して渡す
+  (Jinja2 の tojson フィルタだと日本語が \uXXXX にエスケープされ、無駄に
+  トークンを消費するため).
+  注意: `FakeVertexClient` はこのテンプレートの「# 対象の料理 (JSON)」直後の
+  1 行を JSON としてパースし、フェイク応答の料理名・index を組み立てる.
+  この見出し・改行位置を変更する場合は llm/fake.py も合わせて修正すること.
+variables:
+  - plan_date_label
+  - dishes_json
+  - pantry
+template: |
+  {{ plan_date_label }} の献立です。以下の各料理の食材リストと作り方を作成してください。
+
+  # 対象の料理 (JSON)
+  {{ dishes_json }}
+
+  # 現在の在庫
+  {% if pantry -%}
+  在庫にある食材: {{ pantry | join(", ") }}
+  可能な範囲でこれらを活用してください。
+  {% else -%}
+  在庫情報は提供されていません。
+  {% endif %}

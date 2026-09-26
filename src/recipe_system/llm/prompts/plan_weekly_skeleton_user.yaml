@@ -1,0 +1,28 @@
+name: plan_weekly_skeleton_user
+version: "1"
+description: 週間献立の骨子生成 user プロンプト (毎回変動するコンテキスト).
+variables:
+  - candidate_recipes
+  - pantry
+  - user_request
+template: |
+  # 候補レシピ (事前フィルタ済み)
+  {% if candidate_recipes -%}
+  以下のレシピから優先的に選んでください (必須ではないが、DB ヒットすると材料の集約が安定します)。
+  {% for r in candidate_recipes -%}
+  - {{ r.name }} ({{ r.category }} / 主食材: {{ r.main_ingredient }})
+  {% endfor -%}
+  {% else -%}
+  候補レシピはありません。週内のバランスを意識して自由に提案してください。
+  {% endif %}
+
+  # 現在の在庫
+  {% if pantry -%}
+  在庫にある食材: {{ pantry | join(", ") }}
+  週前半でこれらを優先的に消費してください。
+  {% else -%}
+  在庫情報は提供されていません。
+  {% endif %}
+
+  # 今週の要望
+  {{ user_request or "月曜から日曜までの 7 日分、各日 主菜・副菜・汁物の 3 品で、無理のない献立をお願いします。" }}

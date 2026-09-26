@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero %}
+{% set nav_section = 'week' %}
+{% block title %}月ビュー | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{% set month_cells = [] %}
+{% for week in month_view.weeks %}{% for cell in week %}{% if cell.in_current_month %}{% set _ = month_cells.append(cell) %}{% endif %}{% endfor %}{% endfor %}
+{% set m_confirmed = month_cells|selectattr("status", "in", ["confirmed", "cooked"])|list|length %}
+{% set m_proposed = month_cells|selectattr("status", "equalto", "proposed")|list|length %}
+{% set m_empty = month_cells|selectattr("status", "equalto", "empty")|list|length %}
+{{ editorial_hero(
+    headline_text="月ビュー",
+    date_text=month_view.label,
+    meta_html="<strong>確定 %d</strong> / 提案 %d / 未定 %d"|format(m_confirmed, m_proposed, m_empty)
+) }}
+
+<nav class="tabs" aria-label="表示切替">
+  <a href="/calendar/week"{% if active_tab == 'week' %} aria-current="page"{% endif %}>週</a>
+  <a href="/calendar/month?year={{ today.year }}&month={{ today.month }}"{% if active_tab == 'month' %} aria-current="page"{% endif %}>月</a>
+</nav>
+
+<div class="week-nav">
+  <div class="week-nav__label">{{ month_view.label }}</div>
+  <div class="week-nav__buttons">
+    <a href="/calendar/month?year={{ prev_year }}&month={{ prev_month }}" class="btn btn--ghost btn--sm">← 前月</a>
+    <a href="/calendar/month" class="btn btn--ghost btn--sm">今月</a>
+    <a href="/calendar/month?year={{ next_year }}&month={{ next_month }}" class="btn btn--ghost btn--sm">翌月 →</a>
+  </div>
+</div>
+
+<div class="month-weekday-header" aria-hidden="true">
+  {% for label in ["月", "火", "水", "木", "金", "土", "日"] %}
+    <span>{{ label }}</span>
+  {% endfor %}
+</div>
+
+<div class="month-grid is-stagger">
+  {% for week in month_view.weeks %}
+    {% for cell in week %}
+      {% include "partials/calendar_cell.html" %}
+    {% endfor %}
+  {% endfor %}
+</div>
+
+{% endblock %}

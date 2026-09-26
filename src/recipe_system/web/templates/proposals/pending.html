@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}提案を生成中 | 家庭の献立帖{% endblock %}
+{% block content %}
+<div class="card is-stagger state-card state-card--compact" data-poll-url="/proposals/{{ proposal_id }}/status">
+  <header class="state-card__head">
+    <h1 class="headline headline--h2">提案を生成中</h1>
+    <p class="muted">家族の情報と履歴を反映しています — 完了すると自動で表示されます。</p>
+  </header>
+  <div class="pending-dots" aria-hidden="true">
+    <span class="pending-dots__dot"></span>
+    <span class="pending-dots__dot"></span>
+    <span class="pending-dots__dot"></span>
+  </div>
+  <p class="muted subtle" data-poll-elapsed></p>
+  <p class="muted subtle" data-poll-timeout-message hidden>生成に時間がかかっています。ページを再読み込みして状況を確認してください。</p>
+</div>
+{% endblock %}

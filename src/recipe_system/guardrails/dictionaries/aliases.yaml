@@ -1,0 +1,195 @@
+# 食材エイリアス辞書
+# canonical 名と表記揺れ (aliases) の対応.
+#
+# source ラベル:
+#   consumer-agency-2026: 消費者庁 特定原材料等 29 品目 (2026-04-01 改正反映)
+#   household-custom    : 家庭独自の追加 (エイリアス拡張, 嫌い食材判定など)
+#   household-safety    : 公式リストから外れたがアレルギー保有者保護のため維持
+#
+# 改正履歴:
+#   - 2023-03-09 義務にくるみ追加
+#   - 2024-03-28 推奨にマカダミアナッツ追加, まつたけ削除
+#   - 2026-04-01 義務にカシューナッツ昇格, 推奨にピスタチオ追加
+#   - 2026-09-26 手順の文章検査用に text_match_exclude を追加 (version 3)
+version: "3"
+last_reviewed_at: "2026-09-26"
+# 手順 (自由文) のアレルゲン検査で部分一致に使わない語.
+# 食材リストの照合 (完全一致) には影響しない. 短い語が無関係な語の一部として現れ
+# 誤検出になるものだけを載せる. 追加・削除は人間がレビューすること (6.6 と同様).
+# 実測 (Opus 5.5 の手順 279 件, memo/history/026) で誤検出した語と、同種の語:
+text_match_exclude:
+  - パン    # 「フライパン」(小麦)
+  - とり    # 「冷水にとり」(鶏肉)
+  - 牛      # 「牛乳」(牛肉)
+  - もも    # 「鶏もも肉」(果物のもも)
+  - モモ    # 同上
+  - 乳      # 「豆乳」「乳化」(乳)
+  - いか    # 「〜いかが」「しいたけ」系 (いか)
+  - かに    # 「なめらかに」「やわらかに」(カニ)
+  - さけ    # 「避ける」(さけ)
+entries:
+  # ---- 特定原材料 (表示義務 9 品目) ----
+  - canonical: 卵
+    aliases: [たまご, 玉子, 鶏卵, egg, うずら卵, 卵白, 卵黄, マヨネーズ, マヨ]
+    source: consumer-agency-2026
+
+  - canonical: 乳
+    aliases: [牛乳, ミルク, milk, 生クリーム, バター, butter, チーズ, cheese, ヨーグルト, yogurt, 練乳, コンデンスミルク, 脱脂粉乳]
+    source: consumer-agency-2026
+
+  - canonical: 小麦
+    aliases: [小麦粉, 薄力粉, 強力粉, 中力粉, wheat, パン粉, パン, bread, うどん, そうめん, パスタ, spaghetti, ラーメン, 麩]
+    source: consumer-agency-2026
+
+  - canonical: エビ
+    aliases: [えび, 海老, shrimp, 小えび, 小エビ, むきえび, ブラックタイガー, バナメイエビ, 芝エビ, 桜エビ]
+    source: consumer-agency-2026
+
+  - canonical: カニ
+    aliases: [かに, 蟹, crab, ズワイガニ, タラバガニ, 毛ガニ, 花咲ガニ, カニカマ, かにかま]
+    source: consumer-agency-2026
+
+  - canonical: そば
+    aliases: [蕎麦, soba, 日本そば, 韃靼そば, そば粉, そばつゆ]
+    source: consumer-agency-2026
+
+  - canonical: 落花生
+    aliases: [ピーナッツ, peanut, ピーナツ, ピーナッツバター]
+    source: consumer-agency-2026
+
+  - canonical: くるみ
+    aliases: [クルミ, 胡桃, walnut]
+    source: consumer-agency-2026
+
+  - canonical: カシューナッツ
+    aliases: [cashew, カシュー]
+    source: consumer-agency-2026
+
+  # ---- 特定原材料に準ずるもの 20 品目 (表示推奨) ----
+  - canonical: アーモンド
+    aliases: [almond, アーモンドプードル]
+    source: consumer-agency-2026
+
+  - canonical: あわび
+    aliases: [アワビ, 鮑, abalone]
+    source: consumer-agency-2026
+
+  - canonical: いか
+    aliases: [イカ, 烏賊, squid, するめ, スルメ, 墨イカ, ヤリイカ]
+    source: consumer-agency-2026
+
+  - canonical: いくら
+    aliases: [イクラ, 筋子, すじこ, salmon-roe]
+    source: consumer-agency-2026
+
+  - canonical: オレンジ
+    aliases: [orange, バレンシアオレンジ, ネーブル]
+    source: consumer-agency-2026
+
+  - canonical: キウイフルーツ
+    aliases: [キウイ, kiwi, ゴールデンキウイ]
+    source: consumer-agency-2026
+
+  - canonical: 牛肉
+    aliases: [ぎゅうにく, ビーフ, beef, 牛, 和牛, 牛こま, 牛バラ, 牛もも, ステーキ肉]
+    source: consumer-agency-2026
+
+  - canonical: ごま
+    aliases: [ゴマ, 胡麻, sesame, すりごま, 白ごま, 黒ごま, ごま油]
+    source: consumer-agency-2026
+
+  - canonical: さけ
+    aliases: [鮭, サケ, salmon, 紅鮭, 銀鮭, 白鮭, 鮭フレーク]
+    source: consumer-agency-2026
+
+  - canonical: さば
+    aliases: [鯖, サバ, mackerel, 塩サバ, 〆鯖, しめさば]
+    source: consumer-agency-2026
+
+  - canonical: 大豆
+    aliases: [だいず, soy, soybean, 豆腐, とうふ, 納豆, なっとう, 豆乳, 油揚げ, 厚揚げ, きなこ, 枝豆, 醤油, 味噌, みそ]
+    source: consumer-agency-2026
+
+  - canonical: 鶏肉
+    aliases: [とりにく, 鳥肉, 鶏, とり, chicken, チキン, 鶏もも, 鶏むね, 鶏ささみ, 手羽先, 手羽元]
+    source: consumer-agency-2026
+
+  - canonical: バナナ
+    aliases: [banana]
+    source: consumer-agency-2026
+
+  - canonical: 豚肉
+    aliases: [ぶたにく, 豚, ぶた, pork, ポーク, 豚バラ, 豚こま, 豚もも, 豚ロース, ベーコン, bacon, ハム, ham, ソーセージ, sausage, ウインナー]
+    source: consumer-agency-2026
+
+  - canonical: マカダミアナッツ
+    aliases: [macadamia, マカダミア, マカデミアナッツ]
+    source: consumer-agency-2026
+
+  - canonical: もも
+    aliases: [モモ, 桃, peach, 白桃, 黄桃]
+    source: consumer-agency-2026
+
+  - canonical: やまいも
+    aliases: [ヤマイモ, 山芋, 長芋, ながいも, 自然薯, とろろ, yam]
+    source: consumer-agency-2026
+
+  - canonical: りんご
+    aliases: [リンゴ, 林檎, apple, 紅玉, ふじ]
+    source: consumer-agency-2026
+
+  - canonical: ゼラチン
+    aliases: [gelatin]
+    source: consumer-agency-2026
+
+  - canonical: ピスタチオ
+    aliases: [pistachio, ピスタチオナッツ]
+    source: consumer-agency-2026
+
+  # ---- 公式リスト外で保護対象として保持 ----
+  # まつたけ: 2024-03-28 に消費者庁の推奨表示品目から削除されたが,
+  # アレルギー保有者の安全確保のため辞書を維持する.
+  - canonical: まつたけ
+    aliases: [マツタケ, 松茸]
+    source: household-safety
+
+  # ---- 家庭独自の一般食材 (嫌い食材判定に使う) ----
+  - canonical: セロリ
+    aliases: [せろり, celery, 根セロリ]
+    source: household-custom
+
+  - canonical: パクチー
+    aliases: [ぱくちー, coriander, cilantro, 香菜, シャンツァイ, コリアンダー]
+    source: household-custom
+
+  - canonical: しいたけ
+    aliases: [シイタケ, 椎茸, shiitake]
+    source: household-custom
+
+  - canonical: じゃがいも
+    aliases: [ジャガイモ, 馬鈴薯, potato, 男爵, メークイン]
+    source: household-custom
+
+  - canonical: たまねぎ
+    aliases: [タマネギ, 玉葱, 玉ねぎ, onion, 新玉ねぎ, 紫玉ねぎ]
+    source: household-custom
+
+  - canonical: にんじん
+    aliases: [ニンジン, 人参, carrot]
+    source: household-custom
+
+  - canonical: ほうれん草
+    aliases: [ホウレンソウ, 菠薐草, spinach]
+    source: household-custom
+
+  - canonical: 白菜
+    aliases: [ハクサイ, はくさい]
+    source: household-custom
+
+  - canonical: 味噌
+    aliases: [みそ, miso, 白味噌, 赤味噌, 合わせ味噌]
+    source: household-custom
+
+  - canonical: わかめ
+    aliases: [ワカメ, 若布, wakame]
+    source: household-custom

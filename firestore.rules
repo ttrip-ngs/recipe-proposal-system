@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAllowedFamilyMember(familyId) {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email in
+           get(/databases/$(database)/documents/families/$(familyId)).data.allowed_emails;
+    }
+
+    // 家族プロファイル
+    match /families/{familyId} {
+      allow read, write: if isAllowedFamilyMember(familyId);
+
+      match /members/{memberId} {
+        allow read, write: if isAllowedFamilyMember(familyId);
+      }
+    }
+
+    // レシピ (世帯間共有・読み取り専用)
+    // 書き込みはサーバサイド SA 経由のみ (Admin SDK はルール無視)
+    match /recipes/{recipeId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // 履歴
+    match /history/{historyId} {
+      allow read: if isSignedIn()
+        && resource.data.family_id != null
+        && isAllowedFamilyMember(resource.data.family_id);
+      allow create: if isSignedIn()
+        && request.resource.data.family_id != null
+        && isAllowedFamilyMember(request.resource.data.family_id);
+      allow update, delete: if isSignedIn()
+        && resource.data.family_id != null
+        && isAllowedFamilyMember(resource.data.family_id);
+    }
+
+    // 提案ログ
+    match /proposals/{proposalId} {
+      allow read: if isSignedIn()
+        && resource.data.family_id != null
+        && isAllowedFamilyMember(resource.data.family_id);
+      allow write: if false;
+    }
+
+    // フィードバック
+    match /feedback/{feedbackId} {
+      allow read: if isSignedIn()
+        && resource.data.family_id != null
+        && isAllowedFamilyMember(resource.data.family_id);
+      allow create: if isSignedIn()
+        && request.resource.data.family_id != null
+        && isAllowedFamilyMember(request.resource.data.family_id);
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // サーバ専用コレクション
+    //
+    // 献立・買い物リスト・LLM 利用実績・予算設定はすべて SSR 経由 (Admin SDK)
+    // でのみ読み書きする. ブラウザから Firestore を直接叩く経路は存在しない
+    // (クライアント側で使う Firebase SDK は firebase-auth のみ).
+    // 将来クライアント直アクセスを足す場合に既定で開いてしまわないよう、
+    // 明示的に閉じておく.
+    // ---------------------------------------------------------------------
+
+    match /meal_plans/{planId} {
+      allow read, write: if false;
+    }
+
+    match /shopping_lists/{listId} {
+      allow read, write: if false;
+    }
+
+    match /llm_usage/{usageId} {
+      allow read, write: if false;
+    }
+
+    // config/llm_budget など運用設定. 変更は Console か管理者操作に限定する.
+    match /config/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

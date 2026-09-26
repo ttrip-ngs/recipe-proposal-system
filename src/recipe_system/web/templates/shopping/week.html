@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero, kicker %}
+{% set nav_section = 'shopping' %}
+{% block title %}買い物リスト ({{ week_start.month }}/{{ week_start.day }}〜) | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{% if shopping_list and shopping_list.items %}
+  {% set sl_meta = "<strong>残り %d</strong> / 全 %d 品"|format(shopping_list.remaining_count, shopping_list.total_count) %}
+{% else %}
+  {% set sl_meta = "未集約" %}
+{% endif %}
+{{ editorial_hero(
+    headline_text="買い物リスト",
+    date_text="%d/%02d/%02d - %02d/%02d"|format(week_start.year, week_start.month, week_start.day, week_end.month, week_end.day),
+    meta_html=sl_meta
+) }}
+
+<nav class="cluster mb-3" aria-label="週ナビ">
+  <a href="/shopping/week?start={{ prev_week_start.isoformat() }}" class="btn btn--ghost btn--sm">← 前週</a>
+  <a href="/shopping/week" class="btn btn--ghost btn--sm">今週</a>
+  <a href="/shopping/week?start={{ next_week_start.isoformat() }}" class="btn btn--ghost btn--sm">翌週 →</a>
+  <form method="post" action="/shopping/week/{{ week_start.isoformat() }}/regenerate" class="inline ml-auto">
+    <button type="submit" class="btn btn--outline btn--sm">集約を再計算</button>
+  </form>
+</nav>
+
+{% macro shopping_row(item) %}
+  <li class="check-row" data-checkable data-checked="{{ 'true' if item.checked else 'false' }}">
+    <form
+      method="post"
+      action="/shopping/week/{{ week_start.isoformat() }}/items/{{ item.item_id }}/toggle"
+      class="inline"
+      data-action="toggle"
+    >
+      <button
+        type="submit"
+        class="check-row__toggle"
+        aria-label="{{ '未済に戻す' if item.checked else ('確認済みにする' if item.pantry else '購入済みにする') }}"
+      >
+        <span class="check-row__box" aria-hidden="true"></span>
+      </button>
+    </form>
+
+    <div class="check-row__label">
+      <span class="check-row__name">{{ item.canonical }}</span>
+      <span class="check-row__meta">
+        {% if item.amounts %}<span class="tnum">{{ item.amount_text }}</span>{% endif %}
+        {% if item.manual %}<span class="chip">手動</span>{% endif %}
+        {% if item.note %}— {{ item.note }}{% endif %}
+      </span>
+    </div>
+
+    <details class="check-row__menu">
+      <summary class="btn btn--quiet btn--sm btn--icon" aria-label="アイテムメニュー">…</summary>
+      <form method="post" action="/shopping/week/{{ week_start.isoformat() }}/items/{{ item.item_id }}/delete" class="mt-2">
+        <button type="submit" class="btn btn--danger-ghost btn--sm">削除</button>
+      </form>
+    </details>
+  </li>
+{% endmacro %}
+
+<article class="card is-stagger">
+  {% if shopping_list and shopping_list.buy_items %}
+  <header class="summary-bar">
+    <span class="card__meta tnum">
+      残り <strong>{{ shopping_list.remaining_count }}</strong> / 全 {{ shopping_list.total_count }} 品
+    </span>
+  </header>
+    <ul class="plain" role="list">
+      {% for item in shopping_list.buy_items %}{{ shopping_row(item) }}{% endfor %}
+    </ul>
+  {% elif shopping_list and shopping_list.pantry_items %}
+    <p class="lede">買い足す食材はありません。常備品の在庫だけ確認してください。</p>
+  {% else %}
+    <p class="lede">まだリストがありません。「集約を再計算」を押すか、下のフォームから手動で追加してください。</p>
+  {% endif %}
+</article>
+
+{% if shopping_list and shopping_list.pantry_items %}
+<article class="card is-stagger">
+  <details class="pantry-list">
+    <summary>
+      <strong>常備品・調味料</strong>
+      <span class="card__meta tnum">{{ shopping_list.pantry_items|length }} 品 — 在庫を確認</span>
+    </summary>
+    <p class="muted">調味料などは毎回は買わないため、残り件数に含めません。切れているものだけ買ってください。</p>
+    <ul class="plain" role="list">
+      {% for item in shopping_list.pantry_items %}{{ shopping_row(item) }}{% endfor %}
+    </ul>
+  </details>
+</article>
+{% endif %}
+
+<article class="card card--inset is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">手動でアイテム追加</h2>
+  </header>
+  <form method="post" action="/shopping/week/{{ week_start.isoformat() }}/items" class="form-stack">
+    <label class="field">
+      <strong>食材名</strong>
+      <input type="text" name="canonical" required enterkeyhint="next" autocomplete="off" autocapitalize="off">
+    </label>
+    <div class="form-row">
+      <label class="field">
+        <strong>数量</strong>
+        <input type="text" name="quantity" placeholder="例: 1.5" inputmode="decimal" autocomplete="off">
+      </label>
+      <label class="field">
+        <strong>単位</strong>
+        <input type="text" name="unit" placeholder="例: g / 個" autocomplete="off" autocapitalize="off">
+      </label>
+    </div>
+    <label class="field">
+      <strong>メモ (任意)</strong>
+      <input type="text" name="note" enterkeyhint="done" autocomplete="off">
+    </label>
+    <button type="submit" class="btn">追加</button>
+  </form>
+</article>
+
+{% endblock %}

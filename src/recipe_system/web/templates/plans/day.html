@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import status_badge, kicker, headline, allergen_callout, dish_details %}
+{% set nav_section = 'today' %}
+{% set is_pending = proposal and proposal.status == "pending" %}
+{% set weekday_jp = ["月","火","水","木","金","土","日"][plan_date.weekday()] %}
+{% block title %}{{ plan_date.month }}/{{ plan_date.day }} の献立 | 家庭の献立帖{% endblock %}
+{% block content %}
+
+<nav class="cluster mb-2" aria-label="日付ナビ">
+  <a href="/plans/{{ prev_date }}" class="btn btn--quiet btn--sm">← 前日</a>
+  <a href="/plans/{{ next_date }}" class="btn btn--quiet btn--sm">翌日 →</a>
+  <a href="/calendar/week?start={{ plan_date.isoformat() }}" class="btn btn--ghost btn--sm ml-auto">週ビューへ</a>
+</nav>
+
+{% set day_headline = (
+    meal_plan.dishes[0].name if meal_plan and meal_plan.dishes
+    else "この日はスキップ" if meal_plan and meal_plan.status == "skipped"
+    else "考え中…" if is_pending
+    else "未定"
+) %}
+<header class="editorial is-stagger">
+  <h1 class="editorial__headline">{{ plan_date.month }}/{{ plan_date.day }} ({{ weekday_jp }}) — {{ day_headline }}</h1>
+  <span class="editorial__date">{{ plan_date.year }}/{{ "%02d"|format(plan_date.month) }}/{{ "%02d"|format(plan_date.day) }}</span>
+  {% if meal_plan %}<span class="editorial__meta">{{ status_labels[meal_plan.status] }}{% if meal_plan.dishes %} · {{ meal_plan.dishes|length }} 品{% endif %}</span>{% endif %}
+</header>
+
+{% if is_pending %}
+  <div class="card is-stagger" data-poll-url="/plans/{{ plan_date.isoformat() }}/status">
+    <header class="card__head">
+      <h2 class="headline headline--h3">献立を生成中</h2>
+      <span class="card__meta" data-poll-elapsed></span>
+    </header>
+    <p class="muted">家族の情報と履歴をふまえて LLM が献立を組み立てています。完了すると自動で表示されます。</p>
+    <p class="muted subtle" data-poll-timeout-message hidden>生成に時間がかかっています。ページを再読み込みして状況を確認してください。</p>
+  </div>
+
+{% elif meal_plan and meal_plan.status == "skipped" %}
+  <div class="card is-stagger">
+    <header class="card__head">
+      <h2 class="headline headline--h3">この日はスキップ</h2>
+      {{ status_badge("skipped") }}
+    </header>
+    <p class="muted">外食などの理由でこの日の献立はスキップ扱いです。</p>
+    <form method="post" action="/plans/{{ plan_date.isoformat() }}/clear" class="inline">
+      <button type="submit" class="btn btn--ghost">スキップを解除</button>
+    </form>
+  </div>
+
+{% elif meal_plan and meal_plan.dishes %}
+
+  {% if proposal and proposal.violations %}
+    {{ allergen_callout(proposal.violations) }}
+  {% endif %}
+
+  <article class="card is-stagger">
+    <header class="card__head">
+      <h2 class="headline headline--h3">献立 ({{ meal_plan.dishes|length }} 品)</h2>
+      {{ status_badge(meal_plan.status) }}
+    </header>
+
+    {% if proposal and proposal.status == "error" %}
+      <p class="muted">前回の生成: エラー ({{ proposal.error_message or "不明" }})</p>
+    {% elif proposal and not proposal.succeeded %}
+      <p class="muted">前回の生成: ガード違反が残ったため失敗。再度提案を依頼してください。</p>
+    {% endif %}
+
+    <div class="stack">
+      {% for dish in meal_plan.dishes %}
+        <div class="dish-card">
+          <div class="dish-card__head">
+            <span class="badge badge--plain">{{ dish.category }}</span>
+            <span class="dish-card__name">{{ dish.name }}</span>
+          </div>
+          {% if dish.reason %}
+            <p class="muted">{{ dish.reason }}</p>
+          {% endif %}
+          {{ dish_details(dish) }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="action-bar action-bar--sticky">
+      {% if meal_plan.status == "proposed" %}
+        <form method="post" action="/plans/{{ plan_date.isoformat() }}/confirm" class="inline">
+          <button type="submit" class="btn">この献立で確定</button>
+        </form>
+      {% endif %}
+      {% if meal_plan.status in ["proposed", "confirmed"] %}
+        <form method="post" action="/plans/{{ plan_date.isoformat() }}/cooked" class="inline">
+          <button type="submit" class="btn btn--outline">調理済にする</button>
+        </form>
+      {% endif %}
+      {% if not is_past and meal_plan.status != "cooked" %}
+        <form method="post" action="/plans/{{ plan_date.isoformat() }}/propose" class="inline">
+          <button type="submit" class="btn btn--ghost">別案を提案</button>
+        </form>
+      {% endif %}
+      <form method="post" action="/plans/{{ plan_date.isoformat() }}/clear" class="inline">
+        <button type="submit" class="btn btn--quiet">この日をクリア</button>
+      </form>
+    </div>
+
+    {% if meal_plan.proposal_id %}
+      <form method="post" action="/plans/{{ plan_date.isoformat() }}/feedback" class="form-stack mt-6">
+        <fieldset class="form-fieldset">
+          <legend class="kicker">フィードバック</legend>
+          <div class="choice-grid" role="radiogroup" aria-label="この献立の評価">
+            <label><input type="radio" name="rating" value="good" required> 良い</label>
+            <label><input type="radio" name="rating" value="neutral"> 普通</label>
+            <label><input type="radio" name="rating" value="pass"> 今度はパス</label>
+          </div>
+          <label class="field">
+            <strong>ひとこと (任意)</strong>
+            <textarea name="comment" rows="3" placeholder="家族の反応や次回への要望"></textarea>
+          </label>
+          <button type="submit" class="btn btn--ghost">フィードバックを送る</button>
+        </fieldset>
+      </form>
+    {% endif %}
+  </article>
+
+  {% if proposal %}
+    <p class="meta-footer">
+      prompt v{{ proposal.prompt_version }} / model {{ proposal.model }} / retry {{ proposal.retry_count or 0 }} / {{ proposal.latency_ms or 0 }}ms
+    </p>
+  {% endif %}
+
+{% else %}
+  <div class="card is-stagger">
+    <header class="card__head">
+      <h2 class="headline headline--h3">この日の献立は未定</h2>
+      {{ status_badge("empty") }}
+    </header>
+    {% if not is_past %}
+      <div class="action-bar action-bar--sticky">
+        <form method="post" action="/plans/{{ plan_date.isoformat() }}/propose" class="inline">
+          <button type="submit" class="btn">献立を提案してもらう</button>
+        </form>
+        <form method="post" action="/plans/{{ plan_date.isoformat() }}/skip" class="inline">
+          <button type="submit" class="btn btn--quiet">この日はスキップ</button>
+        </form>
+      </div>
+      <p class="muted subtle">提案には 5〜15 秒ほどかかります（Cloud Run コールドスタート時）。</p>
+    {% else %}
+      <p class="muted">過去日への提案はできません。</p>
+    {% endif %}
+    {% if proposal and proposal.error_code == "budget_exceeded" %}
+      <aside class="allergen-callout" role="note">
+        <svg class="allergen-callout__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        <div>
+          <p class="allergen-callout__title">今月の AI 予算を超過しました</p>
+          <p>{{ proposal.error_message }}</p>
+          <p><a href="/admin/usage">利用状況を見る</a></p>
+        </div>
+      </aside>
+    {% elif proposal and proposal.status == "error" %}
+      <aside class="allergen-callout" role="note">
+        <svg class="allergen-callout__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        <div>
+          <p class="allergen-callout__title">前回の生成エラー</p>
+          <p>{{ proposal.error_message or "不明" }}</p>
+        </div>
+      </aside>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}

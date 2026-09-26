@@ -1,0 +1,181 @@
+{% extends "layout.html" %}
+{% block title %}ログイン | 家庭の献立帖{% endblock %}
+{% block content %}
+<article class="card is-stagger card--auth">
+  <header class="card__head">
+    <h1 class="headline headline--h2">ログイン</h1>
+  </header>
+  <p class="muted">家族メンバーとして登録された Google アカウントでサインインしてください。</p>
+
+  {% if firebase_auth_emulator_host_browser %}
+  <div class="card card--inset mt-3">
+    <p class="muted subtle">
+      現在 Firebase Auth エミュレータに接続しています。「Google でサインイン」を押すと
+      Fake-Google ログイン画面が開きます。<code>allowed_emails</code> に登録された
+      アドレス (例: <code>parent@example.com</code>) を入力してください。
+    </p>
+  </div>
+  {% endif %}
+
+  <div id="login-status" class="muted mt-3"></div>
+
+  <div class="form-stack mt-3">
+    <button id="sign-in-google" type="button" class="btn btn--block">Google でサインイン</button>
+
+    {% if dev_login_email %}
+    <button id="sign-in-dev" type="button" class="btn btn--outline btn--block">
+      [Dev] {{ dev_login_email }} でログイン
+    </button>
+    <p class="muted subtle">
+      Auth エミュレータ接続時のみ表示. 初回は自動でユーザー作成 + サインインします.
+    </p>
+    {% endif %}
+  </div>
+
+  <details class="mt-5">
+    <summary class="muted">開発者向け: 手動 ID トークン投入 (フォールバック)</summary>
+    <p class="muted mt-2">
+      ボタンが動かない場合のフォールバック。Emulator UI
+      (<a href="http://localhost:4000" target="_blank">http://localhost:4000</a>) や
+      REST API (<code>accounts:signUp</code>) で取得した ID Token を貼り付けて
+      「セッション確立」を押してください。
+    </p>
+    <form id="dev-session" class="form-stack mt-2" onsubmit="event.preventDefault(); devSession();">
+      <label class="field">
+        <strong>ID Token</strong>
+        <textarea id="id-token" rows="3" placeholder="eyJhbGciOi..."></textarea>
+      </label>
+      <button type="submit" class="btn btn--outline">セッション確立</button>
+      <pre id="dev-session-result" class="muted pre-wrap"></pre>
+    </form>
+  </details>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Firebase config はサーバ側の Settings.firebase_web_config から埋め込む.
+  // 未設定なら開発者向け手動フォームのみ動作.
+  {% if firebase_config %}
+  window.__FIREBASE_CONFIG__ = {{ firebase_config | tojson }};
+  {% endif %}
+  {% if firebase_auth_emulator_host_browser %}
+  window.__FIREBASE_AUTH_EMULATOR__ = {{ firebase_auth_emulator_host_browser | tojson }};
+  {% endif %}
+  {% if dev_login_email %}
+  window.__DEV_LOGIN__ = {
+    email: {{ dev_login_email | tojson }},
+    password: {{ dev_login_password | tojson }},
+  };
+  {% endif %}
+</script>
+<script type="module">
+  // =============================================================
+  // Firebase Web SDK v10 (modular) を CDN からロード.
+  // =============================================================
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import {
+    getAuth,
+    signInWithPopup,
+    GoogleAuthProvider,
+    connectAuthEmulator,
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+  const statusEl = document.getElementById("login-status");
+
+  const config = window.__FIREBASE_CONFIG__;
+  if (!config) {
+    statusEl.textContent =
+      "Firebase config が未設定です。開発者向けフォームをご利用ください。";
+  } else {
+    const app = initializeApp(config);
+    const auth = getAuth(app);
+
+    // エミュレータ接続 (FIREBASE_AUTH_EMULATOR_HOST 相当を window で指定する場合)
+    if (window.__FIREBASE_AUTH_EMULATOR__) {
+      connectAuthEmulator(auth, window.__FIREBASE_AUTH_EMULATOR__, { disableWarnings: true });
+    }
+
+    const provider = new GoogleAuthProvider();
+    document.getElementById("sign-in-google").addEventListener("click", async () => {
+      statusEl.textContent = "サインイン中...";
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const idToken = await result.user.getIdToken();
+        await postSession(idToken);
+      } catch (e) {
+        statusEl.textContent = "サインイン失敗: " + (e?.message || e);
+      }
+    });
+  }
+
+  async function postSession(idToken) {
+    const r = await fetch("/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok && data.redirect) {
+      location.href = data.redirect;
+    } else {
+      statusEl.textContent = "セッション確立失敗: " + (data.detail || r.status);
+    }
+  }
+
+  window.devSession = async function devSession() {
+    const token = document.getElementById("id-token").value.trim();
+    if (!token) return;
+    const r = await fetch("/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: token }),
+    });
+    const data = await r.json().catch(() => ({}));
+    document.getElementById("dev-session-result").textContent =
+      JSON.stringify(data, null, 2);
+    if (r.ok && data.redirect) setTimeout(() => (location.href = data.redirect), 500);
+  };
+
+  // -------------------------------------------------------------
+  // Dev ワンクリックログイン (Auth Emulator 接続時のみ).
+  // signInWithPassword -> 失敗時 signUp -> /session POST -> リダイレクト.
+  // Firebase SDK を経由せず Auth Emulator REST を直接叩く (依存最小化のため).
+  // -------------------------------------------------------------
+  const devBtn = document.getElementById("sign-in-dev");
+  if (devBtn && window.__DEV_LOGIN__ && window.__FIREBASE_AUTH_EMULATOR__) {
+    const emulatorBase = window.__FIREBASE_AUTH_EMULATOR__;
+    const apiKey = "fake-api-key"; // Auth Emulator では値は何でもよい
+    devBtn.addEventListener("click", async () => {
+      statusEl.textContent = "Dev ログイン中...";
+      const body = {
+        email: window.__DEV_LOGIN__.email,
+        password: window.__DEV_LOGIN__.password,
+        returnSecureToken: true,
+      };
+      try {
+        let res = await fetch(
+          `${emulatorBase}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+        );
+        if (!res.ok) {
+          // 初回はユーザーが存在しないので signUp に切り替える
+          res = await fetch(
+            `${emulatorBase}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+          );
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          statusEl.textContent = "Dev ログイン失敗: " + (err?.error?.message || res.status);
+          return;
+        }
+        const data = await res.json();
+        await postSession(data.idToken);
+      } catch (e) {
+        statusEl.textContent = "Dev ログイン失敗: " + (e?.message || e);
+      }
+    });
+  }
+</script>
+{% endblock %}

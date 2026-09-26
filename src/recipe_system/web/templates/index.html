@@ -1,0 +1,129 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero, status_badge, headline, kicker %}
+{% set nav_section = 'today' %}
+{% block title %}今日 | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{% set weekday_jp = ["月","火","水","木","金","土","日"][today.weekday()] %}
+{% set confirmed_count = week.days|selectattr("status", "in", ["confirmed", "cooked"])|list|length %}
+{% set proposed_count = week.days|selectattr("status", "equalto", "proposed")|list|length %}
+{% set empty_count = week.days|selectattr("status", "equalto", "empty")|list|length %}
+{{ editorial_hero(
+    headline_text="今週の献立",
+    date_text="%d/%d (%s) %s"|format(today.month, today.day, weekday_jp, week.label),
+    meta_html="<strong>確定 %d</strong> / 提案 %d / 未定 %d"|format(confirmed_count, proposed_count, empty_count)
+) }}
+
+<nav class="tabs" aria-label="表示切替">
+  <a href="/" aria-current="page">今週</a>
+  <a href="/calendar/month?year={{ today.year }}&month={{ today.month }}">月ビュー</a>
+  <a href="/calendar/week">週ビュー</a>
+</nav>
+
+<div class="bento">
+  <section class="bento__main is-stagger" aria-label="今週の献立">
+    <div class="week-nav">
+      <div class="week-nav__label">{{ week.label }}</div>
+      <div class="week-nav__buttons">
+        <a href="/calendar/week?start={{ week.prev_week_start.isoformat() }}" class="btn btn--ghost btn--sm">← 前週</a>
+        <a href="/calendar/week?start={{ week.next_week_start.isoformat() }}" class="btn btn--ghost btn--sm">翌週 →</a>
+        <form method="post" action="/plans/week/{{ week.week_start.isoformat() }}/propose" class="inline">
+          <button type="submit" class="btn btn--sm">今週まとめて献立を提案</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="week-strip">
+      <div class="week-strip__rail" data-week-strip role="region" aria-label="今週の献立カード" aria-roledescription="carousel">
+        {% for cell in week.days %}
+          {% include "partials/calendar_cell.html" %}
+        {% endfor %}
+      </div>
+      <div class="week-strip__dots" aria-hidden="true">
+        {% for cell in week.days %}
+          <span{% if cell.is_today %} data-today="true"{% endif %}></span>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <aside class="bento__aside" aria-label="今日と買い物">
+    {% if today_cell %}
+      <article class="card is-stagger">
+        <header class="card__head">
+          <h2 class="headline headline--h3">本日 {{ today.month }}/{{ today.day }} ({{ today_cell.weekday_label }})</h2>
+          {{ status_badge(today_cell.status) }}
+        </header>
+        {% if today_cell.meal_plan and today_cell.meal_plan.dishes %}
+          <ul class="plain">
+            {% for dish in today_cell.meal_plan.dishes %}
+              <li>
+                <strong>{{ dish.name }}</strong>
+                <span class="muted">— {{ dish.category }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+          <a href="/plans/{{ today_cell.iso }}" class="btn btn--outline btn--sm">詳細・操作へ</a>
+        {% else %}
+          <p class="lede">今日の献立はまだ決まっていません。</p>
+          <form method="post" action="/plans/{{ today_cell.iso }}/propose">
+            <button type="submit" class="btn btn--block">献立を提案してもらう</button>
+          </form>
+          <p class="muted subtle">提案には 5〜15 秒ほどかかります（Cloud Run コールドスタート時）。</p>
+        {% endif %}
+      </article>
+    {% endif %}
+
+    <article class="card is-stagger">
+      <header class="card__head">
+        <h2 class="headline headline--h3">今週の買い物</h2>
+        {% if shopping_list and shopping_list.total_count > 0 %}
+        <span class="card__meta tnum">残り {{ shopping_list.remaining_count }} / {{ shopping_list.total_count }}</span>
+        {% endif %}
+      </header>
+      {% if shopping_list and shopping_list.total_count > 0 %}
+        <ul class="plain">
+          {% for item in shopping_list.buy_items[:5] %}
+            <li>
+              {% if item.checked %}
+                <span class="muted strike">{{ item.canonical }}</span>
+              {% else %}
+                <strong>{{ item.canonical }}</strong>
+              {% endif %}
+              {% if item.amounts %}
+                <span class="muted tnum">{{ item.amount_text }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+          {% if shopping_list.total_count > 5 %}
+            <li class="muted">…ほか {{ shopping_list.total_count - 5 }} 品</li>
+          {% endif %}
+        </ul>
+        <a href="/shopping/week" class="btn btn--outline btn--sm">買い物リストへ</a>
+      {% else %}
+        <p class="muted">まだリストはありません。</p>
+        <a href="/shopping/week" class="btn btn--outline btn--sm">買い物リストを作る</a>
+      {% endif %}
+    </article>
+
+    {% if budget_widget %}
+      {% include "partials/_budget_widget.html" %}
+    {% endif %}
+
+    <article class="card card--inset is-stagger">
+      <header class="card__head">
+        <h2 class="headline headline--h3">メニュー</h2>
+      </header>
+      <ul class="plain">
+        <li><a href="/calendar/week">週ビュー</a></li>
+        <li><a href="/calendar/month?year={{ today.year }}&month={{ today.month }}">月ビュー</a></li>
+        <li><a href="/shopping/week">買い物リスト</a></li>
+        <li><a href="/history">調理済の記録</a></li>
+        <li><a href="/profile">家族プロファイル</a></li>
+        <li><a href="/admin/usage">AI 利用状況</a></li>
+      </ul>
+    </article>
+  </aside>
+</div>
+
+{% endblock %}

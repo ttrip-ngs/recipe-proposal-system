@@ -1,0 +1,158 @@
+{# 共通マクロ集. {% from "partials/_macros.html" import xxx with context %} で読み込む #}
+
+{# 状態バッジ. status=empty/proposed/confirmed/cooked/skipped.
+   ラベル辞書 (status_labels) は web/templating.py で Jinja グローバル登録済み #}
+{% macro status_badge(status, label=None) -%}
+<span class="badge badge--{{ status }}">{{ label or status_labels.get(status, status) }}</span>
+{%- endmacro %}
+
+{# kicker (small editorial lead-in) #}
+{% macro kicker(text) -%}
+<span class="kicker">{{ text }}</span>
+{%- endmacro %}
+
+{# headline (display font, h1/h2/h3 切替) #}
+{% macro headline(text, level=2) -%}
+<h{{ level }} class="headline headline--h{{ level }}">{{ text }}</h{{ level }}>
+{%- endmacro %}
+
+{# lede (sub-headline copy) #}
+{% macro lede(text) -%}
+<p class="lede">{{ text }}</p>
+{%- endmacro %}
+
+{# 料理の材料と作り方 (折りたたみ). dish は ingredients (dict の列) と steps (文字列の列) を持つ.
+   allergen_tags のうち canonical 自身と同名のタグは食材名と重複するため表示しない.
+   steps は 2026-09 の手順導入前に保存された献立には無い #}
+{% macro dish_details(dish) -%}
+{% if dish.ingredients %}
+<details>
+  <summary>材料を見る</summary>
+  <ul class="plain mt-2">
+    {% for ing in dish.ingredients %}
+      <li>
+        <span>{{ ing.name }}</span>
+        {% if ing.quantity %}<span class="muted tnum">— {{ ing.quantity }}{{ ing.unit or "" }}</span>{% endif %}
+        {% if ing.allergen_tags %}
+          {% for tag in ing.allergen_tags if tag != ing.canonical %}<span class="badge-warn">{{ tag }}</span>{% endfor %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</details>
+{% endif %}
+{% if dish.steps %}
+<details>
+  <summary>作り方を見る</summary>
+  <ol class="dish-steps mt-2">
+    {% for step in dish.steps %}<li>{{ step }}</li>{% endfor %}
+  </ol>
+</details>
+{% endif %}
+{%- endmacro %}
+
+{# bottom navigation. active: 'today'|'week'|'shopping'|'family'|'menu'.
+   リンク先・ラベルは web/templating.py の nav_items (Jinja グローバル) が正本.
+   アイコン SVG はここに閉じる (表示詳細のため) #}
+{% macro _bottom_nav_icon(key) -%}
+  {%- if key == 'today' -%}
+    <svg class="bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg>
+  {%- elif key == 'week' -%}
+    <svg class="bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+  {%- elif key == 'shopping' -%}
+    <svg class="bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 7zM9 7V5a3 3 0 1 1 6 0v2"/></svg>
+  {%- elif key == 'family' -%}
+    <svg class="bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="11" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 20c0-2 2.5-3.5 5-3.5"/></svg>
+  {%- elif key == 'menu' -%}
+    <svg class="bottom-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro bottom_nav(active) -%}
+<nav class="bottom-nav" aria-label="主要ナビゲーション">
+  {% for item in nav_items %}
+  <a href="{{ item.url }}" class="bottom-nav__item"{% if active == item.key %} aria-current="page"{% endif %}>
+    {{ _bottom_nav_icon(item.key) }}
+    {{ item.bottom_label }}
+  </a>
+  {% endfor %}
+</nav>
+{%- endmacro %}
+
+{# ページヘッダ: タイトル + 日付 + 右寄せメタを 1〜2 行に詰める.
+   旧 editorial_hero 互換のため kicker_text / lede_text 引数は残すが,
+   情報密度を優先し描画は省略する. #}
+{% macro editorial_hero(kicker_text=None, headline_text="", lede_text=None, date_text=None, meta_html=None) -%}
+<header class="editorial is-stagger">
+  <h1 class="editorial__headline">{{ headline_text }}</h1>
+  {% if date_text %}<span class="editorial__date">{{ date_text }}</span>{% endif %}
+  {% if meta_html %}<span class="editorial__meta">{{ meta_html|safe }}</span>{% endif %}
+  <span class="editorial__rule" aria-hidden="true"></span>
+</header>
+{%- endmacro %}
+
+{# アレルゲン警告コールアウト. violations はリスト(severity, member, ingredient, reason) #}
+{% macro allergen_callout(violations) -%}
+{% if violations %}
+<aside class="allergen-callout" role="note" aria-label="アレルゲン関連の注意">
+  <svg class="allergen-callout__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l10 18H2L12 3z"/>
+    <path d="M12 10v5"/>
+    <circle cx="12" cy="18" r="0.8" fill="currentColor"/>
+  </svg>
+  <div>
+    <p class="allergen-callout__title">食材に関する注意</p>
+    <ul class="allergen-callout__list">
+      {% for v in violations %}
+      <li>
+        <span class="badge badge-{{ v.severity }}">{{ v.severity }}</span>
+        <strong>{{ v.member }}</strong>: {{ v.ingredient }}
+        <span class="muted">— {{ v.reason }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</aside>
+{% endif %}
+{%- endmacro %}
+
+{# チップ (アレルゲン/嫌い表示用). tone='accent'|'danger'|'neutral' #}
+{% macro chip(label, tone='neutral') -%}
+<span class="chip{% if tone == 'danger' %} chip--danger{% elif tone == 'accent' %} chip--accent{% endif %}">{{ label }}</span>
+{%- endmacro %}
+
+{#
+  アレルゲン個別チェックボックス.
+  groups: [{name, members}, ...]  - メンバーは canonical 名のリスト
+  selected: Iterable[str]  - 現在チェック済みの canonical / グループ名集合
+  form_id: グループ全選択 JS のスコープ用ユニーク ID
+#}
+{% macro allergen_checkboxes(groups, selected, form_id) -%}
+<fieldset class="allergen-fieldset">
+  <legend class="kicker">アレルゲン</legend>
+  <p class="allergen-fieldset__note">
+    消費者庁の特定原材料等 29 品目 (令和 8 年 4 月時点) に準拠。個別食材ごとに指定できます。
+  </p>
+  {% for group in groups %}
+    <div class="allergen-group" data-allergen-group="{{ form_id }}-{{ loop.index }}">
+      <div class="allergen-group__head">
+        <strong class="allergen-group__name">{{ group.name }}</strong>
+        {% if group.members|length > 1 %}
+          <div class="cluster">
+            <button type="button" class="btn btn--ghost btn--sm" data-allergen-toggle="all" data-target="{{ form_id }}-{{ loop.index }}">全選択</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-allergen-toggle="none" data-target="{{ form_id }}-{{ loop.index }}">解除</button>
+          </div>
+        {% endif %}
+      </div>
+      <div class="allergen-grid">
+        {% for canonical in group.members %}
+          <label class="allergen-option">
+            <input type="checkbox" name="allergens" value="{{ canonical }}" {% if canonical in selected %}checked{% endif %}>
+            <span>{{ canonical }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</fieldset>
+{%- endmacro %}

@@ -1,0 +1,56 @@
+# gcloud builds submit / gcloud run deploy --source のアップロード対象から除外する.
+# .gcloudignore が存在する場合 gcloud は .gitignore を参照しないため、
+# シークレット類は必ずここにも明記すること.
+#
+# cloudbuild.yaml の lint/typecheck/test ステップが tests/ と pyproject.toml を
+# 使うので、それらは除外しない.
+
+.git
+.gitignore
+
+# Claude Code のセッション作業ディレクトリ (worktree を含むため必ず除外)
+.claude
+
+# 環境変数・シークレット
+.env
+.env.local
+.env.staging
+.env.*.local
+.deploy.env
+.envrc
+*.pem
+*.key
+service-account*.json
+firebase-adminsdk-*.json
+
+# 家族データはサンプル以外すべて除外する (CLAUDE.md §6.5)
+data/seeds/family.*.yaml
+data/seeds/family.*.yml
+!data/seeds/family.example.yaml
+
+# ローカル成果物
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+tmp
+emulator-data
+evaluation/reports
+.playwright-cli
+firebase-debug.log
+firestore-debug.log
+*.log
+
+# ドキュメント・メモ (イメージにもテストにも不要)
+docs
+memo
+recipe-system-design.md
+TASKS.md
+
+.DS_Store
+.vscode
+.idea

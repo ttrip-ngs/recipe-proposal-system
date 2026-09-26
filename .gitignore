@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# 環境変数・シークレット
+.env
+.env.local
+.env.*.local
+.env.staging
+# デプロイ先 GCP プロジェクト等の環境別上書き (scripts/deploy/config.sh が読む)
+.deploy.env
+.envrc
+*.pem
+*.key
+service-account*.json
+firebase-adminsdk-*.json
+
+# Firebase エミュレータ
+emulator-data/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# 本番家族データ (サンプルのみ git 管理)
+data/seeds/family.*.yaml
+data/seeds/family.*.yml
+!data/seeds/family.example.yaml
+
+# 評価レポート
+evaluation/reports/
+
+# 中間ファイル
+tmp/
+
+# playwright-cli (スキル実行時のセッション artifacts)
+.playwright-cli/
+
+# IDE
+.vscode/
+!.vscode/settings.json.sample
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# ログ
+*.log
+
+# Cloud Run ローカル
+.gcloudignore.local
+
+# Claude Code の worktree (リポジトリ内に作られるため除外)
+.claude/worktrees/

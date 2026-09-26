@@ -1,0 +1,19 @@
+{# 1 日分のセル. cell: DayCell #}
+{% from "partials/_macros.html" import status_badge %}
+{% set status_label = status_labels[cell.status] %}
+<a
+  href="/plans/{{ cell.iso }}"
+  class="day-cell day-cell--{{ cell.status }}{% if cell.is_today %} day-cell--today{% endif %}{% if cell.is_past %} day-cell--past{% endif %}{% if cell.in_current_month is defined and not cell.in_current_month %} day-cell--outside{% endif %}"
+  {% if cell.is_today %}data-today="true"{% endif %}
+>
+  <div class="day-cell__head">
+    <span class="day-cell__date">{{ cell.plan_date.day }}</span>
+    <span class="day-cell__weekday">{{ cell.weekday_label }}</span>
+  </div>
+  {% if cell.primary_dish_name %}
+    <div class="day-cell__dish">{{ cell.primary_dish_name }}</div>
+  {% else %}
+    <div class="day-cell__dish day-cell__dish--empty">{{ status_label }}</div>
+  {% endif %}
+  <div class="day-cell__badge">{{ status_badge(cell.status) }}</div>
+</a>

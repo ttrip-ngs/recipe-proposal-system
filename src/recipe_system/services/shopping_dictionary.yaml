@@ -1,0 +1,99 @@
+# 買い物リスト用の食材辞書
+#
+# guardrails/dictionaries/aliases.yaml (アレルゲン判定用) とは用途が別.
+# アレルゲン辞書は「醤油 -> 大豆」「ごま油 -> ごま」のように含有アレルゲンで束ねるため,
+# 買い物の集約キーには使えない. ここでは「売り場で同じ物として買うか」で束ねる.
+#
+# 照合は NFKC 正規化 + 小文字化 + カタカナ->ひらがな変換後に行うため,
+# ひらがな/カタカナだけの表記揺れ (ニンジン/にんじん) は aliases に書かなくてよい.
+#
+# exclude : 買い物リストに載せない (水道水など)
+# pantry  : 常備品. リストでは「常備品 (在庫を確認)」欄に分け, 残り件数に数えない
+# items   : 通常の食材の表記揺れ統合. 部位・種類で買い分ける物 (鶏もも/鶏むね等) は統合しない
+version: "1"
+
+exclude: [水, お湯, 湯, 熱湯, ぬるま湯, 冷水, 氷水, 氷]
+
+pantry:
+  - canonical: 塩
+    aliases: [食塩, 粗塩, 天然塩]
+  - canonical: 砂糖
+    aliases: [上白糖, きび砂糖, 三温糖, グラニュー糖]
+  - canonical: 醤油
+    aliases: [しょうゆ, しょう油, 濃口醤油, こいくち醤油]
+  - canonical: 薄口醤油
+    aliases: [うすくち醤油, 淡口醤油]
+  - canonical: みりん
+    aliases: [本みりん, 味醂]
+  - canonical: 酒
+    aliases: [日本酒, 料理酒, 清酒]
+  - canonical: 酢
+    aliases: [米酢, 穀物酢, お酢]
+  - canonical: 味噌
+    aliases: [白味噌, 赤味噌, 合わせ味噌]
+  - canonical: サラダ油
+    aliases: [油, 植物油, 揚げ油, 米油, キャノーラ油, 菜種油, サラダオイル]
+  - canonical: ごま油
+    aliases: [胡麻油]
+  - canonical: オリーブオイル
+    aliases: [オリーブ油, エキストラバージンオリーブオイル]
+  - canonical: こしょう
+    aliases: [胡椒, 黒こしょう, 黒胡椒, 白こしょう, ブラックペッパー]
+  - canonical: 塩こしょう
+    aliases: [塩胡椒]
+  - canonical: 片栗粉
+    aliases: []
+  - canonical: 小麦粉
+    aliases: [薄力粉, 強力粉]
+  - canonical: パン粉
+    aliases: []
+  - canonical: だし
+    aliases: [だし汁, 出汁, 和風だし, 顆粒だし, だしの素, 昆布だし, かつおだし, 合わせだし]
+  - canonical: 鶏がらスープの素
+    aliases: [鶏ガラスープの素, 鶏がらスープ, 顆粒鶏がらスープ]
+  - canonical: コンソメ
+    aliases: [顆粒コンソメ, 固形コンソメ, コンソメキューブ]
+  - canonical: ごま
+    aliases: [白ごま, 黒ごま, いりごま, 白いりごま, 黒いりごま, すりごま, 白すりごま]
+  - canonical: かつお節
+    aliases: [かつおぶし, 鰹節, 削り節, おかか]
+  - canonical: 昆布
+    aliases: [だし昆布]
+  - canonical: 煮干し
+    aliases: [いりこ]
+  - canonical: 唐辛子
+    aliases: [赤唐辛子, 鷹の爪, 一味唐辛子]
+  - canonical: マヨネーズ
+    aliases: []
+  - canonical: ケチャップ
+    aliases: [トマトケチャップ]
+  - canonical: ウスターソース
+    aliases: []
+  - canonical: 中濃ソース
+    aliases: []
+  - canonical: オイスターソース
+    aliases: []
+  - canonical: ポン酢
+    aliases: [ぽん酢]
+  - canonical: めんつゆ
+    aliases: []
+  - canonical: 豆板醤
+    aliases: []
+  - canonical: カレー粉
+    aliases: []
+
+items:
+  - canonical: しょうが
+    aliases: [生姜]
+  - canonical: にんにく
+    aliases: [大蒜]
+  - canonical: たまねぎ
+    aliases: [玉ねぎ, 玉葱]
+  - canonical: 長ねぎ
+    aliases: [ねぎ, 白ねぎ]
+  - canonical: にんじん
+    aliases: [人参]
+  - canonical: じゃがいも
+    aliases: [馬鈴薯]
+  - canonical: わかめ
+    aliases: [乾燥わかめ, カットわかめ]

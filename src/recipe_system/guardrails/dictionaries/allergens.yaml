@@ -1,0 +1,98 @@
+# アレルゲングループ辞書
+# グループ名 <-> canonical 名の集合. aliases.yaml の canonical 名と一致させる.
+#
+# 公式ソース: 消費者庁「食品表示基準」食物アレルギー表示の対象品目
+#   - 特定原材料 (表示義務) 9 品目: 卵, 乳, 小麦, そば, 落花生, えび, かに, くるみ, カシューナッツ
+#   - 特定原材料に準ずるもの (表示推奨) 20 品目:
+#       アーモンド, あわび, いか, いくら, オレンジ, キウイフルーツ, 牛肉, ごま,
+#       さけ, さば, 大豆, 鶏肉, バナナ, 豚肉, マカダミアナッツ, もも, やまいも,
+#       りんご, ゼラチン, ピスタチオ
+#
+# 改正履歴:
+#   - 2023-03-09 義務にくるみ追加
+#   - 2024-03-28 推奨にマカダミアナッツ追加, まつたけ削除
+#   - 2026-04-01 義務にカシューナッツ昇格, 推奨にピスタチオ追加 (経過措置 2028-03-31 まで)
+#
+# 設計上の補足:
+#   - グループ名 (name) はユーザー入力 (Firestore に保存される member.allergens) のキー.
+#     破壊的変更になるため変更時は migration 必須.
+#   - "ナッツ" は義務 (くるみ・カシューナッツ) と推奨 (アーモンド・マカダミアナッツ・
+#     ピスタチオ) を横断する家庭運用上のまとめグループ. 木の実類は交差反応リスクが
+#     高いため一括チェックを優先する.
+#   - まつたけは 2024-03-28 に公式リストから削除されたが, まつたけアレルギー保有者
+#     の安全のため辞書には残し source を household-safety に降格して管理する.
+version: "2"
+last_reviewed_at: "2026-05-24"
+groups:
+  # ---- 特定原材料 (表示義務 9 品目) ----
+  - name: 卵
+    members: [卵]
+    source: consumer-agency-2026
+
+  - name: 乳
+    members: [乳]
+    source: consumer-agency-2026
+
+  - name: 小麦
+    members: [小麦]
+    source: consumer-agency-2026
+
+  - name: 甲殻類
+    members: [エビ, カニ]
+    source: consumer-agency-2026
+
+  - name: そば
+    members: [そば]
+    source: consumer-agency-2026
+
+  - name: 落花生
+    members: [落花生]
+    source: consumer-agency-2026
+
+  - name: ナッツ
+    members: [くるみ, カシューナッツ, アーモンド, マカダミアナッツ, ピスタチオ]
+    source: consumer-agency-2026
+
+  # ---- 特定原材料に準ずるもの (表示推奨 20 品目) ----
+  - name: 軟体類
+    members: [あわび, いか]
+    source: consumer-agency-2026
+
+  - name: 魚卵
+    members: [いくら]
+    source: consumer-agency-2026
+
+  - name: 魚類
+    members: [さけ, さば]
+    source: consumer-agency-2026
+
+  - name: 肉類
+    members: [牛肉, 豚肉, 鶏肉]
+    source: consumer-agency-2026
+
+  - name: 果物
+    members: [オレンジ, キウイフルーツ, バナナ, もも, りんご]
+    source: consumer-agency-2026
+
+  - name: ごま
+    members: [ごま]
+    source: consumer-agency-2026
+
+  - name: 大豆
+    members: [大豆]
+    source: consumer-agency-2026
+
+  - name: やまいも
+    members: [やまいも]
+    source: consumer-agency-2026
+
+  - name: ゼラチン
+    members: [ゼラチン]
+    source: consumer-agency-2026
+
+  # ---- 家庭独自・公式リスト外で保護したい食材 ----
+  # まつたけは 2024-03-28 に消費者庁の推奨表示品目から削除されたが,
+  # まつたけアレルギー保有者の安全確保のため家庭辞書として維持.
+  - name: まつたけ
+    members: [まつたけ]
+    source: household-safety

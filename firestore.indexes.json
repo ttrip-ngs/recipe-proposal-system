@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "family_id", "order": "ASCENDING"},
+        {"fieldPath": "cooked_at", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "meal_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "family_id", "order": "ASCENDING"},
+        {"fieldPath": "plan_date", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "proposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "family_id", "order": "ASCENDING"},
+        {"fieldPath": "requested_at", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "recipes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "category", "order": "ASCENDING"},
+        {"fieldPath": "main_ingredient", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "feedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "proposal_id", "order": "ASCENDING"},
+        {"fieldPath": "submitted_at", "order": "DESCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

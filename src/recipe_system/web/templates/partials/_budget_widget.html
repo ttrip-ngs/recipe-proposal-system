@@ -1,0 +1,32 @@
+{#
+  ダッシュボード aside に置く今月の AI 予算ウィジェット.
+  使用元では以下を context に入れること:
+    budget_widget.current_jpy        : float
+    budget_widget.budget_jpy         : float
+    budget_widget.usage_pct          : float (0..>100)
+    budget_widget.tone               : "ok" | "warn" | "danger"
+    budget_widget.warn_pct           : int
+#}
+<article class="card is-stagger budget-widget budget-widget--{{ budget_widget.tone }}">
+  <header class="card__head">
+    <h2 class="headline headline--h3">今月の AI コスト</h2>
+    <span class="card__meta tnum">{{ "%.0f"|format(budget_widget.usage_pct) }}%</span>
+  </header>
+  <p class="tnum budget-widget__amount">
+    <strong>&yen;{{ "%.1f"|format(budget_widget.current_jpy) }}</strong>
+    <span class="muted"> / &yen;{{ "%.0f"|format(budget_widget.budget_jpy) }}</span>
+  </p>
+  <div class="budget-bar" role="progressbar"
+       aria-valuemin="0" aria-valuemax="100"
+       aria-valuenow="{{ "%.0f"|format(budget_widget.usage_pct) }}"
+       aria-label="今月の AI 予算消化率">
+    <span class="budget-bar__fill"
+          style="width: {{ ([budget_widget.usage_pct, 100]|min) }}%;"></span>
+  </div>
+  {% if budget_widget.tone == "danger" %}
+    <p class="muted subtle mt-2">予算を超過しています。提案は停止しています。</p>
+  {% elif budget_widget.tone == "warn" %}
+    <p class="muted subtle mt-2">予算の {{ budget_widget.warn_pct }}% を超えました。</p>
+  {% endif %}
+  <a href="/admin/usage" class="btn btn--outline btn--sm mt-2">詳細を見る</a>
+</article>

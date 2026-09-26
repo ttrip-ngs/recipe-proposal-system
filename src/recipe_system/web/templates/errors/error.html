@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import kicker %}
+{% block title %}{{ error_title }} | 家庭の献立帖{% endblock %}
+{% block content %}
+<div class="card is-stagger state-card">
+  <header class="state-card__head">
+    {{ kicker(error_kicker) }}
+    <h1 class="headline headline--h1">{{ error_title }}</h1>
+    <p class="lede">{{ detail or error_message }}</p>
+  </header>
+  <div class="state-card__actions">
+    <a href="/" class="btn">トップに戻る</a>
+    {% if show_login_link %}<a href="/login" class="btn btn--ghost">ログインへ</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

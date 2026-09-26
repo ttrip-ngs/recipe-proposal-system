@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import editorial_hero, kicker %}
+{% set nav_section = 'menu' %}
+{% block title %}記録 | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{{ editorial_hero(
+    headline_text="調理済の記録",
+    meta_html="<strong>%d 件</strong>"|format(entries|length)
+) }}
+
+<article class="card is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">最近作った料理</h2>
+    {% if entries %}<span class="card__meta">{{ entries|length }} 件</span>{% endif %}
+  </header>
+  {% if entries %}
+    <ol class="plain" reversed>
+      {% for name, cooked_at in entries %}
+        <li class="record-row">
+          <span class="tnum subtle record-row__date">{{ cooked_at.strftime('%Y-%m-%d') }}</span>
+          <span class="record-row__name">{{ name }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="lede">記録はまだありません。献立を「調理済」にすると、ここに残ります。</p>
+  {% endif %}
+</article>
+
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "layout.html" %}
+{% from "partials/_macros.html" import kicker, editorial_hero %}
+{% set nav_section = 'admin' %}
+{% block title %}LLM 利用状況 | 家庭の献立帖{% endblock %}
+{% block content %}
+
+{{ editorial_hero(
+    headline_text="LLM 利用状況",
+    date_text=year_month,
+    meta_html="<strong>&yen;%.0f</strong> / &yen;%.0f (%.1f%%) · 呼出 %d 件"|format(summary.total_jpy, budget_jpy, usage_pct, summary.total_calls)
+) }}
+
+{# === 1. 予算サマリカード === #}
+<article class="card is-stagger budget-widget budget-widget--{{ tone }} mb-5">
+  <header class="card__head">
+    <h2 class="headline headline--h2">
+      &yen;{{ "%.1f"|format(summary.total_jpy) }}
+      <span class="budget-widget__amount-sub">/ &yen;{{ "%.0f"|format(budget_jpy) }}</span>
+    </h2>
+    <span class="card__meta tnum">{{ "%.1f"|format(usage_pct) }}% 消化</span>
+  </header>
+  <div class="budget-bar" role="progressbar"
+       aria-valuemin="0" aria-valuemax="100"
+       aria-valuenow="{{ "%.0f"|format(usage_pct) }}"
+       aria-label="今月の AI 予算消化率">
+    <span class="budget-bar__fill" style="width: {{ ([usage_pct, 100]|min) }}%;"></span>
+  </div>
+  <p class="muted subtle mt-3">
+    呼出 {{ summary.total_calls }} 件 (成功 {{ summary.success_calls }} 件) /
+    キャッシュヒット率 {{ "%.1f"|format(summary.cache_hit_rate * 100) }}% /
+    USD-JPY {{ "%.1f"|format(usd_jpy_rate) }}
+    {% if llm_provider == "fake" %}<span class="badge badge--plain">FAKE モード</span>{% endif %}
+  </p>
+  {% if tone == "danger" %}
+  <aside class="allergen-callout mt-3" role="note">
+    <svg class="allergen-callout__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+    <div>
+      <p class="allergen-callout__title">予算超過: 新規提案は停止中</p>
+      <p>Firestore コンソールで <code>config/llm_budget.monthly_jpy_limit</code> を引き上げてください。</p>
+    </div>
+  </aside>
+  {% endif %}
+</article>
+
+{# === 2. 直近 30 日 日別グラフ === #}
+<article class="card is-stagger mb-5">
+  <header class="card__head">
+    <h2 class="headline headline--h3">日別コスト (直近 30 日)</h2>
+    <span class="card__meta tnum">max &yen;{{ "%.1f"|format(by_day_max) }}</span>
+  </header>
+  <div class="usage-daily" role="img" aria-label="直近 30 日の日別 AI コスト">
+    {% for d, jpy in summary.by_day %}
+      {% set h_pct = (jpy / by_day_max * 100.0) if by_day_max > 0 else 0 %}
+      <div class="usage-daily__col" title="{{ d.isoformat() }}: ¥{{ '%.2f'|format(jpy) }}">
+        <span class="usage-daily__bar" style="height: {{ h_pct }}%;"></span>
+        {% if d.day == 1 or loop.first or loop.last %}
+          <span class="usage-daily__label">{{ d.month }}/{{ d.day }}</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</article>
+
+{# === 3. 用途別ブレークダウン === #}
+<article class="card is-stagger mb-5">
+  <header class="card__head">
+    <h2 class="headline headline--h3">用途別コスト</h2>
+  </header>
+  <table class="usage-table">
+    <thead>
+      <tr><th>用途</th><th class="tnum">呼出数</th><th class="tnum">コスト (JPY)</th></tr>
+    </thead>
+    <tbody>
+      {% set purpose_labels = {"single_day": "単日提案", "weekly": "週間提案 (骨子)", "weekly_detail": "週間提案 (食材詳細)", "other": "その他"} %}
+      {% for key in ["single_day", "weekly", "weekly_detail", "other"] %}
+        <tr>
+          <td>{{ purpose_labels[key] }}</td>
+          <td class="tnum">{{ summary.by_purpose_count.get(key, 0) }}</td>
+          <td class="tnum">&yen;{{ "%.2f"|format(summary.by_purpose.get(key, 0.0)) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+
+{# === 4. 直近呼出履歴 === #}
+<article class="card is-stagger">
+  <header class="card__head">
+    <h2 class="headline headline--h3">直近の呼出履歴 (最大 20 件)</h2>
+  </header>
+  {% if summary.recent_records %}
+    <table class="usage-table">
+      <thead>
+        <tr>
+          <th>時刻 (UTC)</th>
+          <th>用途</th>
+          <th>モデル</th>
+          <th class="tnum">入力</th>
+          <th class="tnum">出力</th>
+          <th class="tnum">cache R/W</th>
+          <th class="tnum">遅延</th>
+          <th class="tnum">JPY</th>
+          <th>状態</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in summary.recent_records %}
+          <tr>
+            <td class="tnum">{{ r.timestamp.strftime("%m-%d %H:%M") }}</td>
+            <td>{{ r.purpose }}</td>
+            <td><code>{{ r.model }}</code></td>
+            <td class="tnum">{{ r.input_tokens }}</td>
+            <td class="tnum">{{ r.output_tokens }}</td>
+            <td class="tnum">{{ r.cache_read_tokens }}/{{ r.cache_write_tokens }}</td>
+            <td class="tnum">{{ r.latency_ms }}ms</td>
+            <td class="tnum">&yen;{{ "%.2f"|format(r.cost_jpy) }}</td>
+            <td>
+              {% if r.success %}
+                <span class="badge badge--plain">OK</span>
+              {% else %}
+                <span class="badge badge--danger">{{ r.error_code or "fail" }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">今月の呼出はまだありません。</p>
+  {% endif %}
+</article>
+
+{% endblock %}

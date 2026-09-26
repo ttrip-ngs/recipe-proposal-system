@@ -1,0 +1,113 @@
+# Cloud Build: lint / typecheck / test → イメージビルド → Cloud Run デプロイ
+#
+# 実行は scripts/deploy/deploy.sh 経由を前提とする (置換変数とビルド SA を組み立てる).
+# 直接叩く場合は --service-account と --substitutions を自分で指定すること.
+
+substitutions:
+  _REGION: asia-northeast1
+  _SERVICE: recipe-system
+  _AR_REPO: recipe-system
+  # deploy.sh が git の short SHA を渡す. 手動実行時の既定は manual.
+  _IMAGE_TAG: manual
+  # Cloud Run 実行サービスアカウント (必須. bootstrap.sh が作成する)
+  _RUNTIME_SA: ''
+  # アプリ設定
+  _VERTEX_AI_LOCATION: global
+  _LLM_PROVIDER: gemini
+  _LLM_MODEL: ''
+  _USE_PROMPT_CACHE: 'true'
+  _UNKNOWN_INGREDIENT_POLICY: warn
+  _USD_JPY_RATE: '155.0'
+  _LOG_LEVEL: INFO
+  # Secret Manager のシークレット名
+  _SECRET_SESSION: session-secret
+  _SECRET_FIREBASE_WEB: firebase-web-config
+  # Cloud Run リソース (docs/operations.md §1)
+  _MIN_INSTANCES: '0'
+  _MAX_INSTANCES: '3'
+  _CPU: '1'
+  _MEMORY: 512Mi
+  _CONCURRENCY: '20'
+  _TIMEOUT: 60s
+
+steps:
+  - id: lint
+    name: ghcr.io/astral-sh/uv:0.5.4-python3.12-bookworm-slim
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        uv sync --frozen
+        uv run ruff check .
+        uv run ruff format --check .
+
+  - id: typecheck
+    name: ghcr.io/astral-sh/uv:0.5.4-python3.12-bookworm-slim
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        uv sync --frozen
+        uv run mypy src
+
+  # 統合テストは Firestore エミュレータ未起動時に自動 skip される
+  # (tests/integration/conftest.py).
+  - id: test
+    name: ghcr.io/astral-sh/uv:0.5.4-python3.12-bookworm-slim
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        uv sync --frozen
+        uv run pytest --cov=src/recipe_system --cov-report=term-missing
+
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:${_IMAGE_TAG}
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:latest
+      - .
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}
+
+  # SESSION_SECRET と FIREBASE_WEB_CONFIG_JSON は Secret Manager から注入する.
+  # 前者は秘密情報であり、後者は JSON にカンマを含むため --set-env-vars では壊れる.
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:${_IMAGE_TAG}
+      - --region=${_REGION}
+      - --platform=managed
+      - --service-account=${_RUNTIME_SA}
+      - --allow-unauthenticated
+      - --port=8080
+      - --min-instances=${_MIN_INSTANCES}
+      - --max-instances=${_MAX_INSTANCES}
+      - --cpu=${_CPU}
+      - --memory=${_MEMORY}
+      - --concurrency=${_CONCURRENCY}
+      - --timeout=${_TIMEOUT}
+      - --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,ANTHROPIC_VERTEX_PROJECT_ID=$PROJECT_ID,VERTEX_AI_LOCATION=${_VERTEX_AI_LOCATION},LLM_PROVIDER=${_LLM_PROVIDER},LLM_MODEL=${_LLM_MODEL},USE_FAKE_LLM=false,USE_PROMPT_CACHE=${_USE_PROMPT_CACHE},UNKNOWN_INGREDIENT_POLICY=${_UNKNOWN_INGREDIENT_POLICY},USD_JPY_RATE=${_USD_JPY_RATE},LOG_LEVEL=${_LOG_LEVEL}
+      - --set-secrets=SESSION_SECRET=${_SECRET_SESSION}:latest,FIREBASE_WEB_CONFIG_JSON=${_SECRET_FIREBASE_WEB}:latest
+
+# images: は使わない. deploy ステップより後 (全ステップ終了後) に push されるため、
+# Cloud Run デプロイ時点でイメージが Artifact Registry に無い状態になる.
+# 明示的な push ステップを deploy の前に置くことで順序を保証する.
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+timeout: 1800s

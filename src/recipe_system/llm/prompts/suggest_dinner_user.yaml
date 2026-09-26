@@ -1,0 +1,28 @@
+name: suggest_dinner_user
+version: "1"
+model: claude-sonnet-4-6
+description: 夕食献立提案の user プロンプト (毎回変動するコンテキスト).
+variables:
+  - candidate_recipes
+  - pantry
+  - user_request
+template: |
+  # 候補レシピ (事前フィルタ済み)
+  {% if candidate_recipes -%}
+  以下のレシピから選ぶことを優先してください (必須ではないが、DB ヒットすると高速で安定します)。
+  {% for r in candidate_recipes -%}
+  - {{ r.name }} ({{ r.category }} / 主食材: {{ r.main_ingredient }})
+  {% endfor -%}
+  {% else -%}
+  候補レシピはありません。適切な献立を自由に提案してください。
+  {% endif %}
+
+  # 現在の在庫
+  {% if pantry -%}
+  在庫にある食材: {{ pantry | join(", ") }}
+  {% else -%}
+  在庫情報は提供されていません。
+  {% endif %}
+
+  # 今日の要望
+  {{ user_request or "主菜・副菜・汁物の 3 品で、今晩の夕食にふさわしい献立をお願いします。" }}
