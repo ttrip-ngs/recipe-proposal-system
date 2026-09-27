@@ -14,9 +14,9 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from recipe_system.domain import FamilyMember, FamilyProfile, Ingredient, LLMDish, Recipe, Violation
+from recipe_system.domain import FamilyProfile, Ingredient, LLMDish, Recipe, Violation
 from recipe_system.guardrails.dictionary_loader import NormalizerDictionary, default_dictionary
-from recipe_system.guardrails.validators import validate_recipe
+from recipe_system.guardrails.validators import allowed_items, validate_recipe
 from recipe_system.observability.logging import get_logger
 
 logger = get_logger(__name__)
@@ -142,26 +142,27 @@ def build_allergen_summary(
     例: 「大豆 (醤油・大豆油は使用可、味噌も除去)」「小麦 (醤油・酢・麦茶・味噌も除去)」
     """
     dic = dictionary or default_dictionary()
-    return [
-        {
-            "member": m.name,
-            "allergens": [_describe_allergen(a, m, dic) for a in sorted(m.allergens)],
-        }
-        for m in family.members
-        if m.allergens
-    ]
+    summary = []
+    for m in family.members:
+        if not m.allergens:
+            continue
+        # 使用可はガードレールと同じ判定 (該当する全アレルゲンで可) に揃える. 醤油を大豆で可・
+        # 小麦で未選択にしたメンバーに「醤油は使用可」と「醤油も除去」を同時に伝えないため
+        allowed = allowed_items(m, dic)
+        described = [_describe_allergen(a, allowed, dic) for a in sorted(m.allergens)]
+        summary.append({"member": m.name, "allergens": described})
+    return summary
 
 
-def _describe_allergen(allergen: str, member: FamilyMember, dic: NormalizerDictionary) -> str:
+def _describe_allergen(allergen: str, allowed: frozenset[str], dic: NormalizerDictionary) -> str:
     items = sorted(dic.tolerable_items(allergen))
     if not items:
         return allergen
-    policies = member.item_policies.get(allergen, {})
-    allowed = [i for i in items if policies.get(i) == "allow"]
-    removed = [i for i in items if policies.get(i) != "allow"]
+    usable = [i for i in items if i in allowed]
+    removed = [i for i in items if i not in allowed]
     parts = []
-    if allowed:
-        parts.append(f"{'・'.join(allowed)}は使用可")
+    if usable:
+        parts.append(f"{'・'.join(usable)}は使用可")
     if removed:
         parts.append(f"{'・'.join(removed)}も除去")
     return f"{allergen} ({'、'.join(parts)})"

@@ -267,7 +267,8 @@ service cloud.firestore {
 `families/{id}/members/{id}` に `item_policies: map` を追加した。醤油・味噌・ごま油など、
 そのアレルギーがあっても摂取できることが多い食品 (`allergens.yaml` の `usually_tolerated`) を
 メンバーごとに可/不可で持つ。家族設定画面では選択必須、未設定の食品はガードレールで除去扱い
-(ADR 0007)。書き込みは `merge=[フィールド名...]` でフィールドごと置き換える (`merge=True` は
+(ADR 0007)。値は `allow` / `block` のみで、それ以外 (大文字、map 以外など) が入ると家族の
+読み込みが検証エラーになる (安全側。Firestore コンソールで直す)。書き込みは `merge=[フィールド名...]` でフィールドごと置き換える (`merge=True` は
 入れ子の map を再帰マージし、外したアレルギーの設定が残るため)。backfill と未選択の一覧表示は
 `scripts/migrate_add_item_policies.py` (dry-run 既定、本番手順は docstring)。
 

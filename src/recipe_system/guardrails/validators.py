@@ -147,22 +147,22 @@ def _check_text(
     if not member.allergens:
         return
     # 摂取可にした食品は名前にアレルゲンの語を含む (ごま油 -> ごま, 大豆油 -> 大豆).
-    # その表記を先に伏せてから照合し, 残った部分にアレルゲンの語があるときだけ block する
+    # 語の出現位置が摂取可の食品の表記の内側に収まるときだけ無視する. 本文を書き換えて
+    # 伏せると「煮込みそば」の「みそ」(味噌) を消して「そば」まで壊すため, 位置で判定する
     allowed = allowed_items(member, dictionary)
     terms = {
         t: c for t, c in dictionary.text_terms_for(member.allergens).items() if c not in allowed
     }
-    masks = sorted(
-        (t for t, c in dictionary.alias_to_canonical.items() if c in allowed), key=len, reverse=True
-    )
+    allowed_terms = [t for t, c in dictionary.alias_to_canonical.items() if c in allowed]
     for text in texts:
         lowered = unicodedata.normalize("NFKC", text).lower()
-        for mask in masks:
-            lowered = lowered.replace(mask, "\0")
+        allowed_spans = [span for t in allowed_terms for span in _spans(lowered, t)]
         # 「鶏もも肉」に 鶏 / 鶏もも が当たるように, 同じ食材の語が複数当たっても 1 件にする
         reported: set[str] = set()
         for term, canonical in sorted(terms.items()):
-            if term not in lowered or canonical in reported:
+            if canonical in reported or not any(
+                not _inside(span, allowed_spans) for span in _spans(lowered, term)
+            ):
                 continue
             reported.add(canonical)
             sink.append(
@@ -192,3 +192,17 @@ def _check_dislikes(
             reason="苦手食材",
         )
     )
+
+
+def _spans(text: str, term: str) -> list[tuple[int, int]]:
+    """text 中の term の出現区間 (重なりも含む)."""
+    spans = []
+    start = text.find(term)
+    while start != -1:
+        spans.append((start, start + len(term)))
+        start = text.find(term, start + 1)
+    return spans
+
+
+def _inside(span: tuple[int, int], containers: list[tuple[int, int]]) -> bool:
+    return any(c_start <= span[0] and span[1] <= c_end for c_start, c_end in containers)

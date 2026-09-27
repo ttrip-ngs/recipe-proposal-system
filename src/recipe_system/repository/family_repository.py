@@ -38,7 +38,8 @@ def get_family(client: firestore.Client, family_id: str) -> FamilyProfile:
                 name=md["name"],
                 role=md.get("role"),
                 allergens=frozenset(md.get("allergens", [])),
-                item_policies=md.get("item_policies", {}),
+                # 欠損・null は未設定 (除去扱い). allow/block 以外の値は検証エラーにする
+                item_policies=md.get("item_policies") or {},
                 dislikes=frozenset(md.get("dislikes", [])),
                 likes=frozenset(md.get("likes", [])),
                 notes=md.get("notes"),

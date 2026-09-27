@@ -336,3 +336,34 @@ def test_摂取不可なら除去不要候補の表記も手順で検出する()
     assert _check(member, ["豚こま"], ["しょうゆを回しかける"]) == [
         "手順にアレルゲン: 醤油 (しょうゆを回しかける)"
     ]
+
+
+def test_摂取可の食品の表記を伏せても重なる別アレルゲンの語は検出する() -> None:
+    # 「煮込みそば」の中に味噌の別表記「みそ」がある. みそを伏せると「そば」が壊れていた
+    soba = _member_with_policy({"そば", "大豆"}, {"大豆": {"味噌": "allow"}})
+    assert _check(soba, ["豚こま"], ["煮込みそばを添える"]) == [
+        "手順にアレルゲン: そば (煮込みそばを添える)"
+    ]
+    wheat = _member_with_policy(
+        {"小麦"}, {"小麦": {"味噌": "allow", "醤油": "block", "酢": "block", "麦茶": "block"}}
+    )
+    assert _check(wheat, ["豚こま"], ["煮込みそうめんにする"]) == [
+        "手順にアレルゲン: 小麦 (煮込みそうめんにする)"
+    ]
+
+
+def test_別のアレルゲンの下にある可の設定では通さない() -> None:
+    member = _member_with_policy({"大豆"}, {"小麦": {"醤油": "allow"}})
+    assert _check(member, ["醤油"]) == ["アレルゲン: 大豆"]
+
+
+def test_旧データで除去不要候補そのものをアレルゲンに持つ場合は除去する() -> None:
+    for allergen in ["味噌", "醤油"]:
+        member = _member_with_policy({allergen}, {})
+        assert _check(member, [allergen]) != [], allergen
+
+
+def test_醤油は大豆の苦手食材指定では拾わない() -> None:
+    # 醤油を独立 canonical にしたため, dislikes: [大豆] は醤油を warn しない (ADR 0007)
+    member = _member("夫", dislikes={"大豆"})
+    assert _check(member, ["醤油"]) == []

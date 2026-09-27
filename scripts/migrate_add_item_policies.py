@@ -19,8 +19,12 @@ item_policies を持たないメンバーに空の map を入れ, 可/不可が�
   3. 本機能を含むアプリをデプロイしてから --apply を付けて実行する
      (旧アプリは item_policies を知らないが, 未知フィールドは無視されるため順序が逆でも壊れない)
   4. デプロイ直後から, 未選択の食品 (小麦アレルギーの醤油・味噌など) は除去扱いになり, それらを
-     使う料理が提案されなくなる. 手順 2 の一覧をもとに, 家族設定画面ですぐに可/不可を選ぶ
-  5. 再度 dry-run して, 未選択が残っていないことを確認する
+     使う料理が提案されなくなる. 小麦の「酢」は部分一致で検査されるため, 米酢・黒酢・ポン酢
+     なども止まる. 手順 2 の一覧をもとに, 家族設定画面ですぐに可/不可を選ぶ
+  5. 「旧データ」と表示されたメンバーは, allergens に除去不要候補そのもの (味噌など) を持つ.
+     判定では引き続き除去されるが, 編集画面にそのチェックボックスは無く, 保存すると消える.
+     例えば味噌なら, 大豆アレルギーとして選び直し, 味噌を「除去する」にする
+  6. 再度 dry-run して, 未選択が残っていないことを確認する
 
 デフォルトは dry-run. --apply を付けた時のみ Firestore に書き込む.
 メンバー名はセンシティブデータのため表示せず, member_id のみ出す.
@@ -59,17 +63,25 @@ def _undecided(allergens: list[str], policies: dict[str, dict[str, str]]) -> lis
     ]
 
 
+def _tolerated_items() -> set[str]:
+    return set().union(*default_dictionary().allergen_group_tolerated.values())
+
+
 def _migrate_members(client: firestore.Client, *, apply: bool) -> tuple[int, int]:
     """(item_policies を追加したメンバー数, 未選択が残るメンバー数)."""
     added = undecided_members = 0
     for family in client.collection("families").stream():
         for member in family.reference.collection("members").stream():
             data = member.to_dict() or {}
-            if "item_policies" not in data:
+            if data.get("item_policies") is None:  # 欠損または null
                 added += 1
                 if apply:
                     member.reference.update({"item_policies": {}})
-            undecided = _undecided(data.get("allergens", []), data.get("item_policies", {}))
+            allergens = data.get("allergens") or []
+            undecided = _undecided(allergens, data.get("item_policies") or {})
+            legacy = sorted(set(allergens) & _tolerated_items())
+            if legacy:
+                print(f"  {family.id}/{member.id}: 旧データ allergens に {', '.join(legacy)}")
             if undecided:
                 undecided_members += 1
                 print(f"  {family.id}/{member.id}: 未選択 {', '.join(undecided)}")

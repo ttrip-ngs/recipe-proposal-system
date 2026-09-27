@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from recipe_system.domain import FamilyMember, FamilyProfile
 from recipe_system.main import create_app
@@ -126,3 +127,23 @@ def test_閲覧画面に未設定の警告と摂取可の食品を出す(
     html = client.get("/profile").text
     assert "食べてよい: 醤油" in html
     assert "大豆の大豆油" in html
+
+
+def test_既存メンバーの更新でも可不可を保存する(
+    client: TestClient, saved: list[dict[str, Any]]
+) -> None:
+    r = client.post(
+        "/profile/members/m-1",
+        data={"name": "子", "allergens": ["ごま"], "policy__ごま__ごま油": "block"},
+        follow_redirects=False,
+    )
+    assert r.status_code == status.HTTP_303_SEE_OTHER
+    assert saved[0]["member_id"] == "m-1"
+    assert saved[0]["item_policies"] == {"ごま": {"ごま油": "block"}}
+
+
+@pytest.mark.parametrize("bad", [{"大豆": {"醤油": "ALLOW"}}, {"大豆": "allow"}])
+def test_可不可の不正値はメンバーの読み込みで拒否する(bad: dict[str, Any]) -> None:
+    # Firestore の直接編集などで不正値が入っても allow 扱いにせず, 読み込みを失敗させる
+    with pytest.raises(ValidationError):
+        _member({"大豆"}, bad)
