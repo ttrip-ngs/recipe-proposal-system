@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -225,3 +226,30 @@ def test_カタカナとひらがなの違いだけの重複登録もロード�
     )
     with pytest.raises(ValueError, match="エビ"):
         load_dictionary(tmp_path)
+
+
+def test_辞書の全語が自身の_canonical_にタグ付きで解決する() -> None:
+    # 照合キーの実装を変えたときの退行ガード. 旧実装 (lower の完全一致) の上位互換であること
+    d = load_dictionary()
+    for term, canonical in d.alias_to_canonical.items():
+        got, tags = d.normalize(term)
+        assert got == canonical, term
+        assert tags, term
+
+
+def test_部分一致の検査語は_NFKC_済みである() -> None:
+    # 手順・食材名は NFKC してから照合するため, 検査語も NFKC 済みでないと永遠に一致しない
+    d = load_dictionary()
+    for term in [*d.alias_to_canonical, *d.text_match_exclude]:
+        assert unicodedata.normalize("NFKC", term) == term, term
+
+
+def test_互換文字を含む別表記も_NFKC_して検査語にする(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text(
+        'version: "t"\nentries:\n  - canonical: 卵\n    aliases: ["\\uff25\\uff27\\uff27"]\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "allergens.yaml").write_text(
+        'version: "t"\ngroups:\n  - name: 卵\n    members: [卵]\n', encoding="utf-8"
+    )
+    assert "egg" in load_dictionary(tmp_path).text_terms_for(frozenset({"卵"}))

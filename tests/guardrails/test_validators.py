@@ -259,3 +259,20 @@ def test_大豆アレルギーの家族に手順だけに現れた味噌もblock
     family = [_member("子", allergens={"大豆"})]
     recipe = _recipe_with_steps(["火を止めてみそを溶く"])
     assert has_blocking_violation(validate_recipe(recipe, family, load_dictionary()))
+
+
+def test_括弧の外が辞書にある食材でも括弧内のアレルゲンを検出する() -> None:
+    # 「牛乳(または豆乳)」は括弧を除いて 乳 に当たりタグが付くが, 括弧内の豆乳も検査する
+    family = [_member("子", allergens={"大豆"})]
+    recipe = _recipe([_normalized("牛乳(または豆乳)")])
+    violations = validate_recipe(recipe, family, load_dictionary())
+    assert has_blocking_violation(violations)
+    assert [v.canonical for v in violations] == ["大豆"]
+
+
+def test_同じ文に同じ食材の語が複数当たっても違反は1件にまとめる() -> None:
+    # 「鶏もも肉」は 鶏 と 鶏もも の両方に部分一致する
+    family = [_member("妻", allergens={"鶏肉"})]
+    recipe = _recipe([_normalized("鶏もも肉")])
+    violations = validate_recipe(recipe, family, load_dictionary())
+    assert len(violations) == 1

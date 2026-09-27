@@ -10,6 +10,7 @@ from collections.abc import Iterable
 
 from recipe_system.domain import FamilyMember, Ingredient, Recipe, Violation
 from recipe_system.guardrails.dictionary_loader import NormalizerDictionary, default_dictionary
+from recipe_system.text_normalize import bracket_contents
 
 
 def validate_recipe(
@@ -27,7 +28,8 @@ def validate_recipe(
     アレルゲンが現れうる). そのため手順の文章もアレルゲンの語で検査する.
 
     辞書に無い食材 (allergen_tags が空) は名前も同じ語で検査する. 「溶き卵」「鶏ひき肉」
-    のような複合語は辞書の完全一致では引けず, タグ無しで素通りするため.
+    のような複合語は辞書の完全一致では引けず, タグ無しで素通りするため. 辞書にある食材も
+    括弧書きの中身 (「牛乳 (または豆乳)」の豆乳) は検査する.
     """
     members = tuple(family)
     dic = dictionary or default_dictionary()
@@ -36,9 +38,13 @@ def validate_recipe(
         for member in members:
             _check_allergens(ingredient, member, violations)
             _check_dislikes(ingredient, member, violations)
-    unknown_names = [i.name for i in recipe.ingredients if not i.allergen_tags]
+    # 括弧の外が辞書にある食材 (「牛乳 (または豆乳)」) はタグが付くため, 括弧内も別に見る
+    name_texts = [i.name for i in recipe.ingredients if not i.allergen_tags]
+    name_texts += [
+        c for i in recipe.ingredients if i.allergen_tags for c in bracket_contents(i.name)
+    ]
     for member in members:
-        _check_text(unknown_names, "食材名", member, dic, violations)
+        _check_text(name_texts, "食材名", member, dic, violations)
         _check_text(recipe.steps, "手順", member, dic, violations)
     return tuple(violations)
 
@@ -85,9 +91,12 @@ def _check_text(
     terms = dictionary.text_terms_for(member.allergens)
     for text in texts:
         lowered = unicodedata.normalize("NFKC", text).lower()
+        # 「鶏もも肉」に 鶏 / 鶏もも が当たるように, 同じ食材の語が複数当たっても 1 件にする
+        reported: set[str] = set()
         for term, canonical in sorted(terms.items()):
-            if term not in lowered:
+            if term not in lowered or canonical in reported:
                 continue
+            reported.add(canonical)
             sink.append(
                 Violation(
                     severity="block",
