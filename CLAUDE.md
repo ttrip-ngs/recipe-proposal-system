@@ -150,7 +150,7 @@ gcloud run deploy recipe-system --source . --region asia-northeast1
 - プロンプト YAML の `version` フィールドをインクリメントする
 - コミットメッセージに `[prompt]` プレフィックスを付ける
 - ゴールデンセット評価（`evaluation/runner.py`）をローカルで実行し、主要メトリクス（`guard_trigger_rate` など）の退行がないことを確認する
-- CI 側もプロンプト・評価まわりの変更を検出すると実 LLM で評価を自動実行する（`.github/workflows/prompt-eval.yml`）
+- CI では評価を自動実行しない（API 料金のため）。ローカル評価の結果を PR 本文に記載する。CI 上で確認したい場合のみ `.github/workflows/prompt-eval.yml` を手動起動する
 
 ### 6.4 Firestore スキーマ変更時のフロー
 
