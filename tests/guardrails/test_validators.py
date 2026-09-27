@@ -213,3 +213,9 @@ def test_大豆アレルギーの家族に味噌を使う料理は通さない()
     family = [_member("子", allergens={"大豆"})]
     recipe = _recipe([Ingredient(name="味噌", canonical=canonical, allergen_tags=tags)])
     assert has_blocking_violation(validate_recipe(recipe, family, dictionary))
+
+
+def test_大豆アレルギーの家族に手順だけに現れた味噌もblockする() -> None:
+    family = [_member("子", allergens={"大豆"})]
+    recipe = _recipe_with_steps(["火を止めてみそを溶く"])
+    assert has_blocking_violation(validate_recipe(recipe, family, load_dictionary()))
