@@ -127,7 +127,10 @@
   selected: Iterable[str]  - 現在チェック済みの canonical / グループ名集合
   form_id: グループ全選択 JS のスコープ用ユニーク ID
 #}
-{% macro allergen_checkboxes(groups, selected, form_id) -%}
+{# policies: メンバーの item_policies ({アレルギー: {食品: allow/block}}).
+   group.policy_items: {アレルゲン canonical: [通常は除去不要な食品]}. チェックすると可/不可の
+   選択 (必須, 初期選択なし) が現れる. 検証の正本はサーバ側 (profile_edit._parse_item_policies) #}
+{% macro allergen_checkboxes(groups, selected, form_id, policies={}) -%}
 <fieldset class="allergen-fieldset">
   <legend class="kicker">アレルゲン</legend>
   <p class="allergen-fieldset__note">
@@ -147,11 +150,31 @@
       <div class="allergen-grid">
         {% for canonical in group.members %}
           <label class="allergen-option">
-            <input type="checkbox" name="allergens" value="{{ canonical }}" {% if canonical in selected %}checked{% endif %}>
+            <input type="checkbox" name="allergens" value="{{ canonical }}" {% if canonical in selected %}checked{% endif %}
+              {% if canonical in group.policy_items %}data-policy-toggle="{{ form_id }}-{{ canonical }}"{% endif %}>
             <span>{{ canonical }}</span>
           </label>
         {% endfor %}
       </div>
+      {% for canonical, items in group.policy_items.items() %}
+        {% set chosen = policies.get(canonical) or {} %}
+        <div class="allergen-policy" data-policy-for="{{ form_id }}-{{ canonical }}" {% if canonical not in selected %}hidden{% endif %}>
+          <p class="allergen-policy__note">
+            <strong>{{ canonical }}</strong>アレルギーでも食べられることが多い食品です。医師の指示
+            (生活管理指導表の「より厳しい除去が必要なもの」) に従って、それぞれ選んでください。
+          </p>
+          {% for item in items %}
+            <div class="allergen-policy__row" role="radiogroup" aria-label="{{ item }}">
+              <span class="allergen-policy__item">{{ item }}</span>
+              <label><input type="radio" name="policy__{{ canonical }}__{{ item }}" value="allow"
+                {% if chosen.get(item) == 'allow' %}checked{% endif %} {% if canonical in selected %}required{% endif %}> 食べてよい</label>
+              <label><input type="radio" name="policy__{{ canonical }}__{{ item }}" value="block"
+                {% if chosen.get(item) == 'block' %}checked{% endif %} {% if canonical in selected %}required{% endif %}> 除去する</label>
+              {% if canonical in selected and item not in chosen %}<span class="chip chip--danger">未設定</span>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
     </div>
   {% endfor %}
 </fieldset>

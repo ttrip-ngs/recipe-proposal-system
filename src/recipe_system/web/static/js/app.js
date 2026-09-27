@@ -152,8 +152,28 @@
         const inputs = scope.querySelectorAll('input[type="checkbox"][name="allergens"]');
         inputs.forEach((cb) => {
           cb.checked = mode === "all";
+          cb.dispatchEvent(new Event("change"));
         });
       });
+    });
+  }
+
+  // アレルゲンを選んだときだけ「通常は除去不要な食品」の可/不可を表示し, 選択を必須にする.
+  // 検証の正本はサーバ側 (未選択なら保存しない).
+  function setupAllergenPolicyToggles() {
+    document.querySelectorAll("[data-policy-toggle]").forEach((cb) => {
+      const block = document.querySelector(
+        `[data-policy-for="${cb.getAttribute("data-policy-toggle")}"]`,
+      );
+      if (!block) return;
+      const sync = () => {
+        block.hidden = !cb.checked;
+        block.querySelectorAll('input[type="radio"]').forEach((radio) => {
+          radio.required = cb.checked;
+        });
+      };
+      cb.addEventListener("change", sync);
+      sync();
     });
   }
 
@@ -225,6 +245,7 @@
     setupCheckRows();
     setupThemeToggle();
     setupAllergenGroupToggles();
+    setupAllergenPolicyToggles();
     setupPolling();
   });
 })();

@@ -83,6 +83,7 @@ def _seed_family(client: firestore.Client, data: dict[str, Any]) -> None:
             "name": member["name"],
             "role": member.get("role"),
             "allergens": member.get("allergens", []),
+            "item_policies": member.get("item_policies", {}),
             "dislikes": member.get("dislikes", []),
             "likes": member.get("likes", []),
             "notes": member.get("notes"),

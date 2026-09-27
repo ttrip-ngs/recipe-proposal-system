@@ -13,6 +13,7 @@
 #   - 2024-03-28 推奨にマカダミアナッツ追加, まつたけ削除
 #   - 2026-04-01 義務にカシューナッツ昇格, 推奨にピスタチオ追加 (経過措置 2028-03-31 まで)
 #   - 2026-09-27 大豆 グループに 味噌 を追加 (version 3, 家庭側の不具合修正. 公式改正ではない)
+#   - 2026-09-27 usually_tolerated を追加 (version 4, ADR 0007). 醤油・ごま油などを独立 canonical に
 #
 # 設計上の補足:
 #   - グループ名 (name) はユーザー入力 (Firestore に保存される member.allergens) のキー.
@@ -20,22 +21,30 @@
 #   - "ナッツ" は義務 (くるみ・カシューナッツ) と推奨 (アーモンド・マカダミアナッツ・
 #     ピスタチオ) を横断する家庭運用上のまとめグループ. 木の実類は交差反応リスクが
 #     高いため一括チェックを優先する.
+#   - usually_tolerated: そのアレルギーがあっても摂取できることが多い加工品・調味料 (members の部分集合).
+#     出典は食物アレルギーの診療の手引き2023 表16「原則として除去不要の食品」と、学校生活管理指導表
+#     「より厳しい除去が必要なもの」欄 (小麦の味噌, 乳の乳清焼成カルシウムは学校版のみ). 家族設定で
+#     メンバーごとに可/不可を選ぶ. 未選択は不可 (除去) として扱う (ADR 0007).
+#     魚のだし・魚醤, 肉のエキスは辞書が対象 (かつお・いりこ等 / エキスの表記) を持たないため未収録.
 #   - まつたけは 2024-03-28 に公式リストから削除されたが, まつたけアレルギー保有者
 #     の安全のため辞書には残し source を household-safety に降格して管理する.
-version: "3"
+version: "4"
 last_reviewed_at: "2026-09-27"
 groups:
   # ---- 特定原材料 (表示義務 9 品目) ----
   - name: 卵
-    members: [卵]
+    members: [卵, 卵殻カルシウム]
+    usually_tolerated: [卵殻カルシウム]
     source: consumer-agency-2026
 
   - name: 乳
-    members: [乳]
+    members: [乳, 乳糖, 乳清焼成カルシウム]
+    usually_tolerated: [乳糖, 乳清焼成カルシウム]
     source: consumer-agency-2026
 
   - name: 小麦
-    members: [小麦]
+    members: [小麦, 醤油, 酢, 麦茶, 味噌]
+    usually_tolerated: [醤油, 酢, 麦茶, 味噌]
     source: consumer-agency-2026
 
   - name: 甲殻類
@@ -76,12 +85,13 @@ groups:
     source: consumer-agency-2026
 
   - name: ごま
-    members: [ごま]
+    members: [ごま, ごま油]
+    usually_tolerated: [ごま油]
     source: consumer-agency-2026
 
   - name: 大豆
-    # 味噌 は苦手食材の指定用に独立 canonical として持つため, ここで大豆に含める
-    members: [大豆, 味噌]
+    members: [大豆, 醤油, 味噌, 大豆油]
+    usually_tolerated: [醤油, 味噌, 大豆油]
     source: consumer-agency-2026
 
   - name: やまいも

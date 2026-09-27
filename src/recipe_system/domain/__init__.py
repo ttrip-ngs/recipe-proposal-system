@@ -1,6 +1,6 @@
 """ドメインモデル. Firestore 非依存の Pydantic モデル群."""
 
-from recipe_system.domain.family import FamilyMember, FamilyProfile
+from recipe_system.domain.family import FamilyMember, FamilyProfile, ItemPolicy
 from recipe_system.domain.ingredient import Ingredient
 from recipe_system.domain.llm_output import (
     LLMCallMeta,
@@ -38,6 +38,7 @@ __all__ = [
     "FamilyMember",
     "FamilyProfile",
     "Ingredient",
+    "ItemPolicy",
     "LLMCallMeta",
     "LLMDayDetail",
     "LLMDish",

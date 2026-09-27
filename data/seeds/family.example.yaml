@@ -3,6 +3,9 @@
 # allergens は aliases.yaml の canonical 名 (例: エビ, カニ, くるみ) で個別指定する.
 # グループ名 (例: 甲殻類, ナッツ) でも一括除外できるが, 個別指定の方が献立多様性を保てる.
 # dislikes は aliases.yaml の canonical 名で記述する.
+# item_policies は「通常は除去不要な食品」(allergens.yaml の usually_tolerated) の可/不可.
+# 医師の生活管理指導表「より厳しい除去が必要なもの」に○が付いた食品は block にする.
+# 未設定の食品は除去扱い (ADR 0007).
 family_id: example-family
 name: サンプル家族
 timezone: Asia/Tokyo
@@ -32,6 +35,8 @@ members:
     name: 長男
     role: child
     allergens: [卵, 落花生]
+    item_policies:
+      卵: {卵殻カルシウム: allow}
     dislikes: [ピーマン]
     likes: [バナナ]
     notes: "卵とピーナッツアレルギー. 学校給食では除去対応済."

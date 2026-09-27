@@ -52,3 +52,34 @@ def test_スキーマ不一致は_LLMResponseParseError() -> None:
     """JSON デコードは通るがモデル検証で落ちるケース."""
     with pytest.raises(LLMResponseParseError):
         _parse('```json\n{"unexpected": 1}\n```')
+
+
+def test_アレルゲン一覧に除去不要候補の可不可を含める() -> None:
+    from datetime import UTC, datetime
+
+    from recipe_system.domain import FamilyMember, FamilyProfile
+    from recipe_system.guardrails.dictionary_loader import load_dictionary
+    from recipe_system.services.suggestion_common import build_allergen_summary
+
+    now = datetime.now(UTC)
+    member = FamilyMember(
+        member_id="m-1",
+        name="子",
+        allergens=frozenset({"大豆", "小麦", "エビ"}),
+        item_policies={"大豆": {"醤油": "allow", "大豆油": "allow", "味噌": "block"}},
+        reviewed_at=now,
+    )
+    family = FamilyProfile(
+        family_id="f", name="f", members=(member,), created_at=now, updated_at=now
+    )
+    assert build_allergen_summary(family, load_dictionary()) == [
+        {
+            "member": "子",
+            "allergens": [
+                "エビ",
+                # 醤油は大豆で可だが小麦で未選択 -> 大豆の欄でも「除去」と伝え, 矛盾させない
+                "大豆 (大豆油は使用可、味噌・醤油も除去)",
+                "小麦 (味噌・酢・醤油・麦茶も除去)",
+            ],
+        }
+    ]

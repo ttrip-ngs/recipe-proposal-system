@@ -36,6 +36,9 @@ class NormalizerDictionary:
     # 「フライパン」の「パン」
     # のように、短い語が無関係な語の一部として現れて誤検出になるもの.
     text_match_exclude: frozenset[str] = frozenset()
+    # グループ名 -> そのアレルギーがあっても摂取できることが多い canonical (members の部分集合).
+    # 家族設定でメンバーごとに可/不可を選ぶ (ADR 0007)
+    allergen_group_tolerated: dict[str, frozenset[str]] = field(default_factory=dict)
 
     def normalize(self, raw_name: str) -> tuple[str, frozenset[str]]:
         """生の食材名を canonical + allergen_tags に変換する.
@@ -70,6 +73,19 @@ class NormalizerDictionary:
         terms = {alias: c for alias, c in self.alias_to_canonical.items() if c in canonicals}
         terms.update({c.lower(): c for c in canonicals})
         return {t: c for t, c in terms.items() if t not in self.text_match_exclude}
+
+    def tolerable_items(self, allergen: str) -> frozenset[str]:
+        """アレルギー指定 (グループ名 / canonical 名) に対し, 可/不可を選ばせる食品.
+
+        グループ名そのものか, グループの (除去不要候補でない) member を指定した場合に
+        そのグループの ``usually_tolerated`` を返す.
+        """
+        items: set[str] = set()
+        for group, tolerated in self.allergen_group_tolerated.items():
+            members = self.allergen_group_members.get(group, frozenset())
+            if allergen == group or allergen in members - tolerated:
+                items |= tolerated
+        return frozenset(items)
 
     def is_known(self, raw_name: str) -> bool:
         if self._resolve(raw_name) is not None:
@@ -121,11 +137,21 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
                 )
 
     allergen_group_members: dict[str, frozenset[str]] = {}
+    allergen_group_tolerated: dict[str, frozenset[str]] = {}
     canonical_to_allergen_groups: dict[str, set[str]] = {c: set() for c in canonical_set}
     for group in allergens_raw.get("groups", []):
         group_name = group["name"]
         members = frozenset(group.get("members", []))
         allergen_group_members[group_name] = members
+        tolerated = frozenset(group.get("usually_tolerated", []))
+        if not tolerated <= members:
+            # members に無いと食材のタグにグループが付かず, 可/不可の設定が効かない
+            raise ValueError(
+                f"allergens.yaml: {group_name} の usually_tolerated {sorted(tolerated - members)} "
+                "が members に無い"
+            )
+        if tolerated:
+            allergen_group_tolerated[group_name] = tolerated
         for member in members:
             canonical_to_allergen_groups.setdefault(member, set()).add(group_name)
 
@@ -136,6 +162,7 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
             k: frozenset(v) for k, v in canonical_to_allergen_groups.items()
         },
         allergen_group_members=allergen_group_members,
+        allergen_group_tolerated=allergen_group_tolerated,
         aliases_version=str(aliases_raw.get("version", "0")),
         allergens_version=str(allergens_raw.get("version", "0")),
         text_match_exclude=frozenset(

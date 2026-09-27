@@ -41,6 +41,7 @@
         <strong>{{ member.name }}</strong>
         {% if member.role %}<span class="chip">{{ member.role }}</span>{% endif %}
         {% if member.allergens %}<span class="chip chip--danger">アレルギー {{ member.allergens|length }} 件</span>{% endif %}
+        {% if undecided[member.member_id] %}<span class="chip chip--danger">可/不可 未設定 {{ undecided[member.member_id]|length }} 件</span>{% endif %}
       </summary>
       <form method="post" action="/profile/members/{{ member.member_id }}" class="form-stack mt-3">
         <div class="form-row">
@@ -53,7 +54,7 @@
             <input type="text" name="role" value="{{ member.role or '' }}" placeholder="adult / child など" autocomplete="off">
           </label>
         </div>
-        {{ allergen_checkboxes(allergen_groups, member.allergens, 'm-' + member.member_id) }}
+        {{ allergen_checkboxes(allergen_groups, member.allergens, 'm-' + member.member_id, member.item_policies) }}
         <label class="field">
           <strong>嫌いな食材 (カンマ区切り)</strong>
           <input type="text" name="dislikes_csv" value="{{ member.dislikes | sort | join(', ') }}" autocomplete="off">
