@@ -186,6 +186,10 @@ LLM 出力に辞書未登録の食材が現れた場合、既定では以下の�
 - 提案は通す（`block` にしない）
 - 週次のレビューで人間が判断し、必要なら `aliases.yaml` に追加
 
+週次レビューは `scripts/review_unknown_ingredients.py` で、ログを集計し TypeSafe Jev による
+canonical 候補とアレルゲン含有の疑いを付けたレポートを作ってから行う（手順はスクリプトの
+docstring、判断の経緯は ADR 0006）。Jev の判定は候補であり、辞書を自動更新しない。
+
 `block` にしない理由は、辞書網羅性が低い初期段階では全提案が止まってしまうため。運用で辞書を育てる方針を取る。
 
 将来的に辞書カバレッジが十分になったら、環境変数 `UNKNOWN_INGREDIENT_POLICY=block` への切り替えを検討する。
