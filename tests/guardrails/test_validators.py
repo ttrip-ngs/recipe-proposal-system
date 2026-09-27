@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from recipe_system.domain import FamilyMember, Ingredient, Recipe, Violation
+from recipe_system.guardrails.dictionary_loader import load_dictionary
 from recipe_system.guardrails.validators import has_blocking_violation, validate_recipe
 
 
@@ -204,3 +205,11 @@ def test_手順が無ければ手順検査は行わない() -> None:
     family = [_member("長男", allergens={"卵"})]
     recipe = _recipe([Ingredient(name="豚肉", canonical="豚肉", allergen_tags=frozenset())])
     assert validate_recipe(recipe, family) == ()
+
+
+def test_大豆アレルギーの家族に味噌を使う料理は通さない() -> None:
+    dictionary = load_dictionary()
+    canonical, tags = dictionary.normalize("味噌")
+    family = [_member("子", allergens={"大豆"})]
+    recipe = _recipe([Ingredient(name="味噌", canonical=canonical, allergen_tags=tags)])
+    assert has_blocking_violation(validate_recipe(recipe, family, dictionary))

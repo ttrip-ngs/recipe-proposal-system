@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from recipe_system.guardrails.dictionary_loader import default_dictionary, load_dictionary
 
 
@@ -130,3 +132,55 @@ def test_text_match_exclude_は_YAML_の指定どおりに除外する(tmp_path:
     terms = d.text_terms_for(frozenset({"卵"}))
     assert "たま" not in terms
     assert terms["たまご"] == "卵"
+
+
+def test_味噌は大豆グループに属する() -> None:
+    # 味噌は大豆の加工品. かつて aliases.yaml で 大豆 の別表記と canonical 味噌 に
+    # 二重登録され, 後勝ちで canonical 味噌 (大豆タグ無し) に解決されていた.
+    d = load_dictionary()
+    for raw in ["味噌", "みそ", "白味噌", "赤味噌", "合わせ味噌", "miso"]:
+        canonical, tags = d.normalize(raw)
+        assert canonical == "味噌", raw
+        assert "大豆" in tags, raw
+
+
+def test_手順検査の大豆の語に味噌の別表記が含まれる() -> None:
+    terms = load_dictionary().text_terms_for(frozenset({"大豆"}))
+    assert terms["味噌"] == "味噌"
+    assert terms["白味噌"] == "味噌"
+
+
+def test_別表記が複数の_canonical_に重複登録されていればロードを失敗させる(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "aliases.yaml").write_text(
+        'version: "t"\n'
+        "entries:\n"
+        "  - canonical: 大豆\n"
+        "    aliases: [味噌]\n"
+        "  - canonical: 味噌\n"
+        "    aliases: [みそ]\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "allergens.yaml").write_text(
+        'version: "t"\ngroups:\n  - name: 大豆\n    members: [大豆]\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="味噌"):
+        load_dictionary(tmp_path)
+
+
+def test_大文字小文字違いの重複登録もロードを失敗させる(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text(
+        'version: "t"\n'
+        "entries:\n"
+        "  - canonical: 卵\n"
+        "    aliases: [Egg]\n"
+        "  - canonical: たまご製品\n"
+        "    aliases: [egg]\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "allergens.yaml").write_text(
+        'version: "t"\ngroups:\n  - name: 卵\n    members: [卵]\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="egg"):
+        load_dictionary(tmp_path)

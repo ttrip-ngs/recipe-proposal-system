@@ -92,9 +92,15 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
     for entry in aliases_raw.get("entries", []):
         canonical = entry["canonical"]
         canonical_set.add(canonical)
-        alias_to_canonical[canonical.lower()] = canonical
-        for alias in entry.get("aliases", []):
-            alias_to_canonical[alias.lower()] = canonical
+        for term in [canonical, *entry.get("aliases", [])]:
+            key = term.lower()
+            registered = alias_to_canonical.setdefault(key, canonical)
+            # 後勝ちで上書きすると, 片方の canonical が持つアレルゲングループが黙って
+            # 失われる (味噌が 大豆 と 味噌 に二重登録されていた不具合). 起動時に止める.
+            if registered != canonical:
+                raise ValueError(
+                    f"aliases.yaml: {key!r} が {registered!r} と {canonical!r} に重複登録されている"
+                )
 
     allergen_group_members: dict[str, frozenset[str]] = {}
     canonical_to_allergen_groups: dict[str, set[str]] = {c: set() for c in canonical_set}
