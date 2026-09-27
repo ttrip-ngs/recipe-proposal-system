@@ -162,7 +162,9 @@ LLM が生成する作り方 (`steps`) は自由文のため、食材リスト�
 
 LLM 出力に辞書未登録の食材が現れた場合、既定では以下の扱いとする。
 
-- `warn` ログに記録（`unknown_ingredient=true`）
+- `warn` ログに記録（`unknown_ingredient=true`）。イベント名は `guard.unknown_ingredient` で、
+  料理ごとに 1 件、未知食材名の一覧 `ingredients` と辞書版 `aliases_version` を持つ。
+  家族情報は含めない（`services/suggestion_common.normalize_dish` が出力）
 - 提案は通す（`block` にしない）
 - 週次のレビューで人間が判断し、必要なら `aliases.yaml` に追加
 
