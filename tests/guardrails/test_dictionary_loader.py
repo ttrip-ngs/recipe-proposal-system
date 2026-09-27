@@ -253,3 +253,32 @@ def test_互換文字を含む別表記も_NFKC_して検査語にする(tmp_pat
         'version: "t"\ngroups:\n  - name: 卵\n    members: [卵]\n', encoding="utf-8"
     )
     assert "egg" in load_dictionary(tmp_path).text_terms_for(frozenset({"卵"}))
+
+
+def test_通常は除去不要な食品はアレルギー指定ごとに引ける() -> None:
+    d = load_dictionary()
+    assert d.tolerable_items("大豆") == {"醤油", "味噌", "大豆油"}
+    assert d.tolerable_items("小麦") == {"醤油", "酢", "麦茶", "味噌"}
+    assert d.tolerable_items("ごま") == {"ごま油"}
+    # 除去不要候補そのものや, 候補を持たないアレルゲンには選択肢が無い
+    assert d.tolerable_items("味噌") == frozenset()
+    assert d.tolerable_items("エビ") == frozenset()
+
+
+def test_醤油は大豆と小麦の両方のタグを持つ独立_canonical() -> None:
+    canonical, tags = load_dictionary().normalize("しょうゆ")
+    assert canonical == "醤油"
+    assert {"大豆", "小麦"} <= tags
+
+
+def test_usually_tolerated_が_members_に無ければロードを失敗させる(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text(
+        'version: "t"\nentries:\n  - canonical: 大豆\n  - canonical: 醤油\n', encoding="utf-8"
+    )
+    (tmp_path / "allergens.yaml").write_text(
+        'version: "t"\ngroups:\n  - name: 大豆\n    members: [大豆]\n'
+        "    usually_tolerated: [醤油]\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="醤油"):
+        load_dictionary(tmp_path)

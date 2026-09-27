@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from recipe_system.domain import FamilyMember, Recipe
+from recipe_system.guardrails.dictionary_loader import NormalizerDictionary, default_dictionary
+from recipe_system.guardrails.validators import blocked_allergens
 
 
 @dataclass(frozen=True)
@@ -47,10 +49,11 @@ def prefilter_recipes(
     本関数は既に抽出済みの名前リストをそのまま除外する.
     """
     recipes_tuple = tuple(recipes)
-    family_allergens = frozenset().union(*[m.allergens for m in family])
+    members = tuple(family)
+    dictionary = default_dictionary()
 
     after_allergen = tuple(
-        r for r in recipes_tuple if not _has_allergen_conflict(r, family_allergens)
+        r for r in recipes_tuple if not _has_allergen_conflict(r, members, dictionary)
     )
 
     recent_names = frozenset(recent_recipe_names)
@@ -64,10 +67,19 @@ def prefilter_recipes(
     return after_recency, stats
 
 
-def _has_allergen_conflict(recipe: Recipe, family_allergens: frozenset[str]) -> bool:
-    if not family_allergens:
-        return False
-    return any(ing.allergen_tags & family_allergens for ing in recipe.ingredients)
+def _has_allergen_conflict(
+    recipe: Recipe, members: Sequence[FamilyMember], dictionary: NormalizerDictionary
+) -> bool:
+    """事後検証 (validators) と同じ判定をメンバーごとに行う.
+
+    家族全体のアレルゲンの和集合で見ると, あるメンバーが醤油を摂取可にしていても
+    除外されてしまうため, メンバー単位で ``blocked_allergens`` を使う.
+    """
+    return any(
+        blocked_allergens(ing, member, dictionary)
+        for ing in recipe.ingredients
+        for member in members
+    )
 
 
 def recent_recipe_names(

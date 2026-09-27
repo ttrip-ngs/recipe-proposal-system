@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from recipe_system.domain import FamilyMember, Ingredient, Recipe
+from recipe_system.domain import FamilyMember, Ingredient, ItemPolicy, Recipe
 from recipe_system.services.filters import prefilter_recipes, recent_recipe_names
 
 
@@ -77,3 +77,35 @@ def test_アレルゲンがなければ全件残る() -> None:
     assert len(filtered) == 1
     assert stats.total == 1
     assert stats.after_recency == 1
+
+
+def test_事前フィルタもメンバーごとの摂取可設定に従う() -> None:
+    from recipe_system.guardrails.dictionary_loader import load_dictionary
+
+    canonical, tags = load_dictionary().normalize("醤油")
+    recipe = Recipe(
+        name="照り焼き",
+        category="主菜",
+        main_ingredient="鶏肉",
+        ingredients=(Ingredient(name="醤油", canonical=canonical, allergen_tags=tags),),
+    )
+    soy_ok = _member_for_policy("父", {"大豆"}, {"大豆": {"醤油": "allow"}})
+    wheat_undecided = _member_for_policy("子", {"小麦"}, {})
+
+    kept, _ = prefilter_recipes([recipe], [soy_ok], [])
+    assert kept == (recipe,)
+    # 家族の別のメンバーが小麦で未選択なら除外する (和集合ではなくメンバー単位で判定)
+    kept, _ = prefilter_recipes([recipe], [soy_ok, wheat_undecided], [])
+    assert kept == ()
+
+
+def _member_for_policy(
+    name: str, allergens: set[str], policies: dict[str, dict[str, ItemPolicy]]
+) -> FamilyMember:
+    return FamilyMember(
+        member_id=f"m-{name}",
+        name=name,
+        allergens=frozenset(allergens),
+        item_policies=policies,
+        reviewed_at=datetime.now(UTC),
+    )

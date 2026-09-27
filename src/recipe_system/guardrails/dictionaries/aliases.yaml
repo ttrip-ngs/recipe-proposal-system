@@ -13,7 +13,8 @@
 #   - 2026-09-26 手順の文章検査用に text_match_exclude を追加 (version 3)
 #   - 2026-09-27 大豆 の別表記から 味噌 / みそ を削除 (version 4). canonical 味噌 と
 #                二重登録され大豆タグが外れていた. 大豆との対応は allergens.yaml で持つ
-version: "4"
+#   - 2026-09-27 醤油・ごま油を独立 canonical にし, 通常は除去不要な食品 (ADR 0007) を追加 (version 5)
+version: "5"
 last_reviewed_at: "2026-09-27"
 # 部分一致のアレルゲン検査 (手順・辞書に無い食材名・食材名の括弧書き) で使わない語.
 # 食材リストの照合 (照合キーの完全一致) には影響しない. 短い語が無関係な語の一部として現れ
@@ -97,7 +98,7 @@ entries:
     source: consumer-agency-2026
 
   - canonical: ごま
-    aliases: [ゴマ, 胡麻, sesame, すりごま, 白ごま, 黒ごま, ごま油]
+    aliases: [ゴマ, 胡麻, sesame, すりごま, 白ごま, 黒ごま]
     source: consumer-agency-2026
 
   - canonical: さけ
@@ -109,7 +110,7 @@ entries:
     source: consumer-agency-2026
 
   - canonical: 大豆
-    aliases: [だいず, soy, soybean, 豆腐, とうふ, 納豆, なっとう, 豆乳, 油揚げ, 厚揚げ, きなこ, 枝豆, 醤油]
+    aliases: [だいず, soy, soybean, 豆腐, とうふ, 納豆, なっとう, 豆乳, 油揚げ, 厚揚げ, きなこ, 枝豆]
     source: consumer-agency-2026
 
   - canonical: 鶏肉
@@ -195,3 +196,37 @@ entries:
   - canonical: わかめ
     aliases: [ワカメ, 若布, wakame]
     source: household-custom
+
+  # ---- 通常は除去不要な食品 (allergens.yaml の usually_tolerated, ADR 0007) ----
+  # 複数のアレルゲングループに属しうるため独立 canonical にする (醤油は 大豆 と 小麦)
+  - canonical: 醤油
+    aliases: [しょうゆ, しょう油, 濃口醤油, 薄口醤油, 淡口醤油, soy sauce]
+    source: household-safety
+
+  - canonical: 大豆油
+    aliases: [soybean oil]
+    source: household-safety
+
+  - canonical: ごま油
+    aliases: [ゴマ油, 胡麻油, sesame oil]
+    source: household-safety
+
+  - canonical: 酢
+    aliases: [穀物酢, お酢]
+    source: household-safety
+
+  - canonical: 麦茶
+    aliases: []
+    source: household-safety
+
+  - canonical: 卵殻カルシウム
+    aliases: []
+    source: household-safety
+
+  - canonical: 乳糖
+    aliases: [ラクトース, lactose]
+    source: household-safety
+
+  - canonical: 乳清焼成カルシウム
+    aliases: []
+    source: household-safety

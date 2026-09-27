@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from recipe_system.domain import FamilyMember, Ingredient, Recipe, Violation
+from recipe_system.domain import FamilyMember, Ingredient, ItemPolicy, Recipe, Violation
 from recipe_system.guardrails.dictionary_loader import load_dictionary
 from recipe_system.guardrails.validators import has_blocking_violation, validate_recipe
 
@@ -276,3 +276,63 @@ def test_同じ文に同じ食材の語が複数当たっても違反は1件に�
     recipe = _recipe([_normalized("鶏もも肉")])
     violations = validate_recipe(recipe, family, load_dictionary())
     assert len(violations) == 1
+
+
+def _member_with_policy(
+    allergens: set[str], policies: dict[str, dict[str, ItemPolicy]]
+) -> FamilyMember:
+    return _member("子", allergens=allergens).model_copy(update={"item_policies": policies})
+
+
+def _check(member: FamilyMember, names: list[str], steps: list[str] | None = None) -> list[str]:
+    recipe = Recipe(
+        name="テスト料理",
+        category="主菜",
+        main_ingredient="豚肉",
+        ingredients=tuple(_normalized(n) for n in names),
+        steps=tuple(steps or []),
+    )
+    return [v.reason for v in validate_recipe(recipe, [member], load_dictionary())]
+
+
+def test_通常は除去不要な食品も未選択なら除去する() -> None:
+    member = _member_with_policy({"大豆"}, {})
+    assert _check(member, ["醤油"]) == ["アレルゲン: 大豆"]
+
+
+def test_摂取可を選んだ食品は通し本体の食材は除去する() -> None:
+    member = _member_with_policy({"大豆"}, {"大豆": {"醤油": "allow", "味噌": "block"}})
+    assert _check(member, ["しょうゆ"]) == []
+    assert _check(member, ["味噌"]) == ["アレルゲン: 大豆"]
+    assert _check(member, ["豆腐"]) == ["アレルゲン: 大豆"]
+
+
+def test_複数グループに属する食品は全てのアレルギー指定で可のときだけ通す() -> None:
+    # 大豆では醤油を可にしたが, 小麦では未選択 -> 小麦として除去
+    member = _member_with_policy({"大豆", "小麦"}, {"大豆": {"醤油": "allow"}})
+    assert _check(member, ["醤油"]) == ["アレルゲン: 小麦"]
+    both = _member_with_policy(
+        {"大豆", "小麦"}, {"大豆": {"醤油": "allow"}, "小麦": {"醤油": "allow"}}
+    )
+    assert _check(both, ["醤油"]) == []
+
+
+def test_除去不要候補でない食品は可を設定しても除去する() -> None:
+    member = _member_with_policy({"大豆"}, {"大豆": {"豆腐": "allow"}})
+    assert _check(member, ["豆腐"]) == ["アレルゲン: 大豆"]
+
+
+def test_摂取可の食品名に含まれるアレルゲンの語では手順を誤検出しない() -> None:
+    member = _member_with_policy({"ごま"}, {"ごま": {"ごま油": "allow"}})
+    assert _check(member, ["豚こま"], ["ごま油で炒める"]) == []
+    # 伏せた残りに ごま があれば除去する
+    assert _check(member, ["豚こま"], ["ごま油で炒め、ごまをふる"]) == [
+        "手順にアレルゲン: ごま (ごま油で炒め、ごまをふる)"
+    ]
+
+
+def test_摂取不可なら除去不要候補の表記も手順で検出する() -> None:
+    member = _member_with_policy({"小麦"}, {"小麦": {"醤油": "block"}})
+    assert _check(member, ["豚こま"], ["しょうゆを回しかける"]) == [
+        "手順にアレルゲン: 醤油 (しょうゆを回しかける)"
+    ]
