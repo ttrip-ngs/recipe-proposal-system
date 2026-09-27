@@ -89,7 +89,10 @@ def normalize_dish[D](
     ここではコンストラクタを引数で受け取ってインスタンス化する (循環 import 回避).
     """
     normalized_ingredients: list[Ingredient] = []
+    unknown: list[str] = []
     for ing in dish.ingredients:
+        if not dictionary.is_known(ing.name):
+            unknown.append(ing.name)
         canonical, tags = dictionary.normalize(ing.name)
         normalized_ingredients.append(
             Ingredient(
@@ -99,6 +102,17 @@ def normalize_dish[D](
                 quantity=ing.quantity,
                 unit=ing.unit,
             )
+        )
+    if unknown:
+        # 未知食材ポリシー (CLAUDE.md 6.6): 提案は止めずに記録し, 週次で人間が
+        # aliases.yaml への追加を判断する. 未知食材はアレルゲンタグが空になるため
+        # 辞書の穴を見つける唯一の手がかりになる.
+        logger.warning(
+            "guard.unknown_ingredient",
+            unknown_ingredient=True,
+            dish=dish.name,
+            ingredients=unknown,
+            aliases_version=dictionary.aliases_version,
         )
     return normalized_dish_cls(
         name=dish.name,
