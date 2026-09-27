@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -22,7 +23,8 @@ DICTIONARIES_DIR = Path(__file__).parent / "dictionaries"
 class NormalizerDictionary:
     """canonical <-> alias と allergen_group <-> canonical の双方向マップ."""
 
-    # 手順の文章検査に使う語 (小文字化のみ) -> canonical. 部分一致に使うため畳まない
+    # 部分一致検査に使う語 (NFKC + 小文字化のみ) -> canonical. カナは畳まない
+    # (畳むと除外語「かに」で「カニ」まで外れる)
     alias_to_canonical: dict[str, str]
     # 食材名の照合キー (text_normalize.fold_key) -> canonical. normalize / is_known が引く
     lookup: dict[str, str]
@@ -30,7 +32,8 @@ class NormalizerDictionary:
     allergen_group_members: dict[str, frozenset[str]]
     aliases_version: str
     allergens_version: str
-    # 手順 (自由文) の部分一致検査から外す語 (小文字化済み). 「フライパン」の「パン」
+    # 部分一致検査 (手順・辞書に無い食材名・括弧書き) から外す語 (NFKC + 小文字化済み).
+    # 「フライパン」の「パン」
     # のように、短い語が無関係な語の一部として現れて誤検出になるもの.
     text_match_exclude: frozenset[str] = frozenset()
 
@@ -105,7 +108,7 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
         canonical = entry["canonical"]
         canonical_set.add(canonical)
         for term in [canonical, *entry.get("aliases", [])]:
-            alias_to_canonical[term.lower()] = canonical
+            alias_to_canonical[unicodedata.normalize("NFKC", term).lower()] = canonical
             key = fold_key(term)
             registered = lookup.setdefault(key, canonical)
             # 後勝ちで上書きすると, 片方の canonical が持つアレルゲングループが黙って
@@ -135,7 +138,10 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
         allergen_group_members=allergen_group_members,
         aliases_version=str(aliases_raw.get("version", "0")),
         allergens_version=str(allergens_raw.get("version", "0")),
-        text_match_exclude=frozenset(t.lower() for t in aliases_raw.get("text_match_exclude", [])),
+        text_match_exclude=frozenset(
+            unicodedata.normalize("NFKC", t).lower()
+            for t in aliases_raw.get("text_match_exclude", [])
+        ),
     )
 
 

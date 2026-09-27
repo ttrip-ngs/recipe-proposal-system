@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from recipe_system.text_normalize import fold_key
+from recipe_system.text_normalize import bracket_contents, fold_key
 
 
 @pytest.mark.parametrize(
@@ -41,3 +41,9 @@ def test_既定では括弧書きを残す() -> None:
 
 def test_長音記号はそのまま残す() -> None:
     assert fold_key("バター") == "ばたー"
+
+
+def test_bracket_contents_は括弧書きの中身を返す() -> None:
+    assert bracket_contents("牛乳\uff08または豆乳\uff09") == ["または豆乳"]
+    assert bracket_contents("卵 [Mサイズ] 【新鮮】") == ["Mサイズ", "新鮮"]
+    assert bracket_contents("豚肉") == []

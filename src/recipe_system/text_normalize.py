@@ -13,7 +13,7 @@ import unicodedata
 # カタカナ (ァ-ヶ) をひらがなへ. 長音記号などは対象外.
 _KATAKANA_TO_HIRAGANA = {code: code - 0x60 for code in range(ord("ァ"), ord("ヶ") + 1)}
 # NFKC 後に適用するため全角括弧は半角に揃っている. 【】は NFKC で変わらないので個別に持つ.
-_BRACKETS_RE = re.compile(r"\(.*?\)|\[.*?\]|【.*?】")
+_BRACKETS_RE = re.compile(r"\((.*?)\)|\[(.*?)\]|【(.*?)】")
 
 
 def fold_key(text: str, *, drop_brackets: bool = False) -> str:
@@ -22,3 +22,9 @@ def fold_key(text: str, *, drop_brackets: bool = False) -> str:
     if drop_brackets:
         s = _BRACKETS_RE.sub("", s)
     return "".join(s.split()).lower().translate(_KATAKANA_TO_HIRAGANA)
+
+
+def bracket_contents(text: str) -> list[str]:
+    """括弧書きの中身 (NFKC 後). 「牛乳 (または豆乳)」-> ["または豆乳"]."""
+    s = unicodedata.normalize("NFKC", text)
+    return ["".join(groups) for groups in _BRACKETS_RE.findall(s)]
