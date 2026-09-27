@@ -14,8 +14,8 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from recipe_system.domain import FamilyProfile, Ingredient, LLMDish, Recipe, Violation
-from recipe_system.guardrails.dictionary_loader import NormalizerDictionary
+from recipe_system.domain import FamilyMember, FamilyProfile, Ingredient, LLMDish, Recipe, Violation
+from recipe_system.guardrails.dictionary_loader import NormalizerDictionary, default_dictionary
 from recipe_system.guardrails.validators import validate_recipe
 from recipe_system.observability.logging import get_logger
 
@@ -132,10 +132,39 @@ def collect_violations(
     return tuple(all_violations)
 
 
-def build_allergen_summary(family: FamilyProfile) -> list[dict[str, Any]]:
+def build_allergen_summary(
+    family: FamilyProfile, dictionary: NormalizerDictionary | None = None
+) -> list[dict[str, Any]]:
+    """プロンプトに渡すメンバーごとのアレルゲン一覧.
+
+    通常は除去不要な食品 (醤油など) の可/不可も文字列に含める (ADR 0007). 未選択は
+    ガードレールで除去扱いになるため, LLM にも「除去」と伝えて無駄な再依頼を防ぐ.
+    例: 「大豆 (醤油・大豆油は使用可、味噌も除去)」「小麦 (醤油・酢・麦茶・味噌も除去)」
+    """
+    dic = dictionary or default_dictionary()
     return [
-        {"member": m.name, "allergens": sorted(m.allergens)} for m in family.members if m.allergens
+        {
+            "member": m.name,
+            "allergens": [_describe_allergen(a, m, dic) for a in sorted(m.allergens)],
+        }
+        for m in family.members
+        if m.allergens
     ]
+
+
+def _describe_allergen(allergen: str, member: FamilyMember, dic: NormalizerDictionary) -> str:
+    items = sorted(dic.tolerable_items(allergen))
+    if not items:
+        return allergen
+    policies = member.item_policies.get(allergen, {})
+    allowed = [i for i in items if policies.get(i) == "allow"]
+    removed = [i for i in items if policies.get(i) != "allow"]
+    parts = []
+    if allowed:
+        parts.append(f"{'・'.join(allowed)}は使用可")
+    if removed:
+        parts.append(f"{'・'.join(removed)}も除去")
+    return f"{allergen} ({'、'.join(parts)})"
 
 
 def build_dislike_summary(family: FamilyProfile) -> list[dict[str, Any]]:

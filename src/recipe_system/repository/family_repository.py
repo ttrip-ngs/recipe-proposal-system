@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -9,7 +10,7 @@ from uuid import uuid4
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-from recipe_system.domain import FamilyMember, FamilyProfile
+from recipe_system.domain import FamilyMember, FamilyProfile, ItemPolicy
 from recipe_system.repository.converters import to_datetime
 
 
@@ -37,6 +38,7 @@ def get_family(client: firestore.Client, family_id: str) -> FamilyProfile:
                 name=md["name"],
                 role=md.get("role"),
                 allergens=frozenset(md.get("allergens", [])),
+                item_policies=md.get("item_policies", {}),
                 dislikes=frozenset(md.get("dislikes", [])),
                 likes=frozenset(md.get("likes", [])),
                 notes=md.get("notes"),
@@ -75,6 +77,7 @@ def upsert_member(
     name: str,
     role: str | None = None,
     allergens: frozenset[str] | list[str] = (),
+    item_policies: Mapping[str, Mapping[str, ItemPolicy]] | None = None,
     dislikes: frozenset[str] | list[str] = (),
     likes: frozenset[str] | list[str] = (),
     notes: str | None = None,
@@ -89,6 +92,7 @@ def upsert_member(
         "name": name,
         "role": role,
         "allergens": sorted(allergens),
+        "item_policies": {a: dict(p) for a, p in (item_policies or {}).items()},
         "dislikes": sorted(dislikes),
         "likes": sorted(likes),
         "notes": notes,
@@ -99,7 +103,9 @@ def upsert_member(
         .document(family_id)
         .collection("members")
         .document(mid)
-        .set(payload, merge=True)
+        # merge=True は入れ子の map を再帰的にマージし, 外したアレルギーの item_policies が
+        # 残る. 書き込むフィールドを列挙し, 各フィールドは丸ごと置き換える
+        .set(payload, merge=list(payload))
     )
     _touch_family_updated_at(client, family_id, now)
     return mid

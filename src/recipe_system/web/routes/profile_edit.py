@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
+from starlette.datastructures import FormData
 
+from recipe_system.domain import ItemPolicy
 from recipe_system.guardrails.dictionary_loader import default_dictionary
+from recipe_system.guardrails.validators import undecided_items
 from recipe_system.repository.family_repository import (
     FamilyNotFoundError,
     MemberNotFoundError,
@@ -19,6 +22,32 @@ from recipe_system.web.middleware.auth import AuthenticatedUser, current_user, r
 from recipe_system.web.templating import templates
 
 router = APIRouter()
+
+_POLICY_VALUES: dict[str, ItemPolicy] = {"allow": "allow", "block": "block"}
+
+
+def _parse_item_policies(form: FormData, allergens: list[str]) -> dict[str, dict[str, ItemPolicy]]:
+    """選んだアレルゲンの「通常は除去不要な食品」ごとの可/不可をフォームから読む.
+
+    選択は必須 (ADR 0007). 1 つでも未選択なら保存しない. 画面側の required は補助で,
+    ここが正本の検証.
+    """
+    dic = default_dictionary()
+    policies: dict[str, dict[str, ItemPolicy]] = {}
+    missing: list[str] = []
+    for allergen in allergens:
+        for item in sorted(dic.tolerable_items(allergen)):
+            policy = _POLICY_VALUES.get(str(form.get(f"policy__{allergen}__{item}")))
+            if policy is None:
+                missing.append(f"{allergen}の{item}")
+            else:
+                policies.setdefault(allergen, {})[item] = policy
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"次の食品を食べてよいか (可/不可) を選んでください: {', '.join(missing)}",
+        )
+    return policies
 
 
 def _split_csv(raw: str | None) -> list[str]:
@@ -40,10 +69,19 @@ async def show_edit(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
     dic = default_dictionary()
-    allergen_groups = [
-        {"name": name, "members": sorted(members)}
-        for name, members in dic.allergen_group_members.items()
-    ]
+    allergen_groups = []
+    for name, members in dic.allergen_group_members.items():
+        # 通常は除去不要な食品 (醤油など) はアレルゲンとしては選ばせず, 可/不可の選択肢にする
+        selectable = sorted(members - dic.allergen_group_tolerated.get(name, frozenset()))
+        allergen_groups.append(
+            {
+                "name": name,
+                "members": selectable,
+                "policy_items": {
+                    c: sorted(dic.tolerable_items(c)) for c in selectable if dic.tolerable_items(c)
+                },
+            }
+        )
 
     return templates.TemplateResponse(
         request,
@@ -52,12 +90,14 @@ async def show_edit(
             "user": user,
             "family": family,
             "allergen_groups": allergen_groups,
+            "undecided": {m.member_id: undecided_items(m, dic) for m in family.members},
         },
     )
 
 
 @router.post("/profile/members/{member_id}")
 async def update_member(
+    request: Request,
     member_id: str,
     name: str = Form(...),
     role: str | None = Form(default=None),
@@ -71,6 +111,7 @@ async def update_member(
     client = get_firestore_client()
     if not name.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="名前は必須です。")
+    item_policies = _parse_item_policies(await request.form(), allergens)
     upsert_member(
         client,
         family_id,
@@ -78,6 +119,7 @@ async def update_member(
         name=name.strip(),
         role=(role.strip() or None) if role else None,
         allergens=allergens,
+        item_policies=item_policies,
         dislikes=_split_csv(dislikes_csv),
         likes=_split_csv(likes_csv),
         notes=(notes.strip() or None) if notes else None,
@@ -87,6 +129,7 @@ async def update_member(
 
 @router.post("/profile/members")
 async def add_member(
+    request: Request,
     name: str = Form(...),
     role: str | None = Form(default=None),
     allergens: list[str] = Form(default=[]),
@@ -99,12 +142,14 @@ async def add_member(
     client = get_firestore_client()
     if not name.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="名前は必須です。")
+    item_policies = _parse_item_policies(await request.form(), allergens)
     upsert_member(
         client,
         family_id,
         name=name.strip(),
         role=(role.strip() or None) if role else None,
         allergens=allergens,
+        item_policies=item_policies,
         dislikes=_split_csv(dislikes_csv),
         likes=_split_csv(likes_csv),
         notes=(notes.strip() or None) if notes else None,

@@ -32,6 +32,16 @@
             <div class="chip-cluster">
               {% for a in member.allergens|sort %}{{ chip(a, 'danger') }}{% endfor %}
             </div>
+            {% if allowed[member.member_id] %}
+              <p class="muted mt-2">食べてよい: {{ allowed[member.member_id]|join('、') }}</p>
+            {% endif %}
+            {% if undecided[member.member_id] %}
+              <p class="allergen-policy__warn mt-2">
+                可/不可が未設定の食品があります (除去扱い):
+                {% for a, item in undecided[member.member_id] %}{{ a }}の{{ item }}{% if not loop.last %}、{% endif %}{% endfor %}。
+                <a href="/profile/edit">編集画面</a>で選んでください。
+              </p>
+            {% endif %}
           </div>
         {% endif %}
 

@@ -26,7 +26,8 @@
 |---|---|---|---|
 | name | string | 必須 | 呼称 |
 | role | string | 任意 | `adult` / `child` など |
-| allergens | array<string> | 必須 | アレルゲングループ（例: `甲殻類`、`卵`） |
+| allergens | array<string> | 必須 | アレルゲン（canonical 名またはグループ名。例: `エビ`、`卵`） |
+| item_policies | map<string, map<string, string>> | 任意 | 通常は除去不要な食品の可/不可。`{アレルゲン: {食品: "allow" \| "block"}}`（例: `{"大豆": {"醤油": "allow", "味噌": "block"}}`）。未設定の食品は除去扱い（ADR 0007） |
 | dislikes | array<string> | 任意 | 嫌いな食材（canonical 名） |
 | likes | array<string> | 任意 | 好きな食材 |
 | notes | string | 任意 | 医療上の注意、補足 |
@@ -260,6 +261,15 @@ service cloud.firestore {
 詳細手順は [operations.md](operations.md) に記述する。
 
 ## 変更履歴
+
+### 2026-09: members に item_policies (通常は除去不要な食品の可/不可) を追加
+
+`families/{id}/members/{id}` に `item_policies: map` を追加した。醤油・味噌・ごま油など、
+そのアレルギーがあっても摂取できることが多い食品 (`allergens.yaml` の `usually_tolerated`) を
+メンバーごとに可/不可で持つ。家族設定画面では選択必須、未設定の食品はガードレールで除去扱い
+(ADR 0007)。書き込みは `merge=[フィールド名...]` でフィールドごと置き換える (`merge=True` は
+入れ子の map を再帰マージし、外したアレルギーの設定が残るため)。backfill と未選択の一覧表示は
+`scripts/migrate_add_item_policies.py` (dry-run 既定、本番手順は docstring)。
 
 ### 2026-09: dishes に steps (作り方) を追加
 

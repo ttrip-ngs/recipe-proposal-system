@@ -79,6 +79,18 @@ def allowed_items(member: FamilyMember, dictionary: NormalizerDictionary) -> fro
     return frozenset(allowed)
 
 
+def undecided_items(
+    member: FamilyMember, dictionary: NormalizerDictionary
+) -> tuple[tuple[str, str], ...]:
+    """可/不可が未選択の (アレルギー指定, 食品). 判定では除去扱いだが, 画面で設定を促す."""
+    return tuple(
+        (a, item)
+        for a in sorted(member.allergens)
+        for item in sorted(dictionary.tolerable_items(a))
+        if item not in member.item_policies.get(a, {})
+    )
+
+
 def _blocked(
     canonical: str,
     tags: frozenset[str],

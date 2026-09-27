@@ -129,3 +129,40 @@ def test_update_family_meta() -> None:
     assert family.allowed_emails == frozenset({"a@example.com", "b@example.com"})
 
     _cleanup_family(family_id)
+
+
+def test_upsert_member_は外したアレルギーの摂取可設定を残さない() -> None:
+    from recipe_system.repository.family_repository import get_family, upsert_member
+    from recipe_system.repository.firestore_client import get_firestore_client
+
+    family_id = "integration-test-item-policies"
+    _cleanup_family(family_id)
+    _setup_family(family_id)
+    client = get_firestore_client()
+
+    mid = upsert_member(
+        client,
+        family_id,
+        name="子",
+        allergens=["大豆", "小麦"],
+        item_policies={"大豆": {"醤油": "allow", "味噌": "block"}, "小麦": {"醤油": "block"}},
+    )
+    child = get_family(client, family_id).members[0]
+    assert child.item_policies == {
+        "大豆": {"醤油": "allow", "味噌": "block"},
+        "小麦": {"醤油": "block"},
+    }
+
+    # 小麦を外し, 大豆の醤油の選択を変える. 入れ子の map がマージされて残らないこと
+    upsert_member(
+        client,
+        family_id,
+        member_id=mid,
+        name="子",
+        allergens=["大豆"],
+        item_policies={"大豆": {"醤油": "block"}},
+    )
+    child = get_family(client, family_id).members[0]
+    assert child.item_policies == {"大豆": {"醤油": "block"}}
+
+    _cleanup_family(family_id)
