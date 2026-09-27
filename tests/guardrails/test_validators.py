@@ -253,3 +253,9 @@ def test_全角英字の手順もアレルゲンの語で検出する() -> None:
         steps=("\uff25\uff27\uff27を割り入れる",),
     )
     assert has_blocking_violation(validate_recipe(recipe, family, load_dictionary()))
+
+
+def test_大豆アレルギーの家族に手順だけに現れた味噌もblockする() -> None:
+    family = [_member("子", allergens={"大豆"})]
+    recipe = _recipe_with_steps(["火を止めてみそを溶く"])
+    assert has_blocking_violation(validate_recipe(recipe, family, load_dictionary()))

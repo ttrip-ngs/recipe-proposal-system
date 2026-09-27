@@ -13,6 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from recipe_system import __version__
 from recipe_system.config import get_settings
+from recipe_system.guardrails.dictionary_loader import default_dictionary
 from recipe_system.observability.logging import configure_logging, get_logger
 from recipe_system.web.routes import (
     admin,
@@ -44,6 +45,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
         llm_provider=settings.effective_llm_provider,
         use_prompt_cache=settings.use_prompt_cache,
     )
+    # アレルゲン辞書の不整合 (重複登録など) はロード時に例外になる. 遅延ロードのままだと
+    # リビジョンは healthy になり最初の提案リクエストで 500 になるため, 起動時に読んで止める.
+    default_dictionary()
     yield
     logger.info("shutdown")
 
