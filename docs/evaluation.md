@@ -37,8 +37,8 @@ template: |
 2. `version` をインクリメントする
 3. コミットメッセージに `[prompt]` プレフィックスを付ける
 4. ローカルで `uv run python evaluation/runner.py` を実行し、退行がないことを確認
-5. PR 作成時に CI が再度評価を実行（§4）
-6. main マージ前にブランチ保護でゴールデン評価通過を必須にする
+5. PR 作成時に CI が再度評価を実行（§5）
+6. ブランチ保護でゴールデン評価通過を必須にする（main / dev）
 
 ## 3. ゴールデンセット
 
@@ -162,12 +162,16 @@ uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl
 
 ### 5.2 実行環境
 
-Cloud Build または GitHub Actions のいずれかを MVP で選定する（[operations.md](operations.md) §9 で確定）。どちらでも以下を実行する。
+GitHub Actions の `.github/workflows/prompt-eval.yml` で実行する（[operations.md](operations.md) §9.1）。全 PR で起動し、`src/recipe_system/llm/prompts/` か `evaluation/` に変更がある場合だけ実 LLM（`LLM_PROVIDER=anthropic`）で以下を実行する。変更が無い PR は実 LLM を呼ばずに成功で終える（パス条件で起動を絞ると必須チェックが報告されず待ち続けるため）。
 
 ```
 uv sync --frozen
-uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl --output report.json
+uv run python evaluation/runner.py --live --golden evaluation/golden/*.jsonl --output evaluation/reports/ci.json
 ```
+
+- リポジトリ Secret `ANTHROPIC_API_KEY` が必要。未登録で評価対象の変更がある PR は失敗させる
+- フェイク LLM は固定の献立を返すため、履歴重複ケース（G101 など）が原理的に通らず評価の代わりにならない
+- レポート JSON は Actions のアーティファクト `prompt-eval-report` に保存する
 
 結果の JSON を PR コメントに bot が要約投稿する運用を Phase 2 で整備する。
 

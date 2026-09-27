@@ -31,8 +31,18 @@ services:
       - ./emulator-data:/home/node/emulator-data
     environment:
       - FIREBASE_CLI_EXPERIMENTS=1
+    # イメージに wget / curl が無いため node で Firestore と Auth の応答を確認する.
+    # CI は docker compose up --wait でこの healthy を待ってからテストを始める.
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000 >/dev/null 2>&1 || exit 1"]
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          const h=require('http');
+          Promise.all([8080,9099].map(p=>new Promise((ok,ng)=>
+          h.get('http://127.0.0.1:'+p,ok).on('error',ng))))
+          .then(()=>process.exit(0),()=>process.exit(1))
       interval: 10s
       timeout: 3s
       retries: 10

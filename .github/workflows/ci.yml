@@ -1,0 +1,93 @@
+# PR と main / dev への push で品質チェックを行う.
+# デプロイは Cloud Build (cloudbuild.yaml / scripts/deploy/deploy.sh) の担当で、ここでは行わない.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint (pre-commit / mypy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gitleaks がコミット範囲を走査するため履歴ごと取得する
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: pre-commit (ruff / shellcheck / yaml / プロンプト version チェック等)
+        run: uvx pre-commit run --all-files --show-diff-on-failure
+      # pre-commit の gitleaks フックはステージ済み差分しか見ないため、CI では履歴全体を走査する
+      - name: gitleaks (全履歴)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -sSfLO "${base}/${tarball}"
+          curl -sSfL "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt" | grep " ${tarball}\$" | sha256sum -c -
+          tar -xzf "${tarball}" gitleaks
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/gitleaks" git . --redact --no-banner --exit-code 1
+      - name: mypy
+        run: uv run mypy src
+
+  test:
+    name: test (unit / guardrails / integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      # 統合テストはエミュレータ未起動だと skip されるため、ローカルと同じ compose で起動しておく
+      - name: Firebase エミュレータ起動
+        run: docker compose up -d --wait --wait-timeout 180
+      - name: pytest (全体)
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+        run: uv run pytest --cov=src/recipe_system --cov-report=term-missing
+      # docs/guardrails.md: ガードレールは独立フォルダで 95% 以上のカバレッジを保つ
+      - name: ガードレールのカバレッジ (95% 以上)
+        run: >-
+          uv run pytest tests/guardrails -q
+          --cov=src/recipe_system/guardrails --cov-report=term-missing
+          --cov-fail-under=95
+      - name: エミュレータのログ (失敗時)
+        if: failure()
+        run: docker compose logs
+
+  docker-build:
+    name: docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
