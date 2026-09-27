@@ -217,3 +217,14 @@ def test_静的ファイルの_URL_にキャッシュバスティングが付く
     body = client.get("/login").text
     assert re.search(r'href="/static/css/app\.css\?v=\d+"', body)
     assert re.search(r'src="/static/js/app\.js\?v=\d+"', body)
+
+
+def test_アレルゲン辞書が不正なら起動時に失敗する(monkeypatch: pytest.MonkeyPatch) -> None:
+    from recipe_system import main
+
+    def broken() -> None:
+        raise ValueError("aliases.yaml: 重複登録")
+
+    monkeypatch.setattr(main, "default_dictionary", broken)
+    with pytest.raises(ValueError, match="重複登録"), TestClient(create_app()):
+        pass
