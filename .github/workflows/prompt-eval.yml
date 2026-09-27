@@ -1,22 +1,16 @@
-# プロンプト変更時のゴールデンセット評価 (CLAUDE.md 6.3 / docs/evaluation.md §5).
-# フェイク LLM は固定の献立しか返さず評価にならないため、実 LLM (Anthropic API 直接) で実行する.
-# 実行にはリポジトリ Secret ANTHROPIC_API_KEY が必要.
+# ゴールデンセット評価を実 LLM (Anthropic API 直接) で実行する. 手動起動のみ.
 #
-# ブランチ保護の必須チェックにするため全 PR で起動し、プロンプト・評価まわりに
-# 変更が無い PR では実 LLM を呼ばずに成功で終える (パス条件で起動を絞ると、
-# 対象外の PR で結果が報告されず必須チェックが永久に待ちになる).
+# 評価は API 料金がかかり、CLAUDE.md 6.3 でプロンプト変更時のローカル実行を必須にしているため
+# PR ごとの自動実行はしない. CI 上で確認したいときだけ Actions 画面から起動する.
+# フェイク LLM は固定の献立しか返さず評価にならないため使わない.
+# 実行にはリポジトリ Secret ANTHROPIC_API_KEY が必要.
 name: Prompt eval
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: prompt-eval-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   golden:
@@ -31,34 +25,16 @@ jobs:
       ANTHROPIC_VERTEX_PROJECT_ID: ci
       SESSION_SECRET: ci
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: 評価対象の変更有無
-        id: changes
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "${BASE_SHA}...HEAD" \
-              | grep -qE '^(src/recipe_system/llm/prompts/|evaluation/)'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "プロンプト・評価まわりの変更なし. 実 LLM 評価は行わない."
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
       - name: Secret の確認
-        if: steps.changes.outputs.run == 'true' && env.ANTHROPIC_API_KEY == ''
+        if: env.ANTHROPIC_API_KEY == ''
         run: |
           echo "::error::Secret ANTHROPIC_API_KEY が未登録のため評価を実行できない (gh secret set ANTHROPIC_API_KEY)"
           exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-        if: steps.changes.outputs.run == 'true'
         with:
           enable-cache: true
       - name: 評価実行
-        if: steps.changes.outputs.run == 'true'
         run: |
           uv sync --frozen
           uv run python evaluation/runner.py --live \
@@ -66,7 +42,7 @@ jobs:
             --prompt-version "${GITHUB_SHA}" \
             --output evaluation/reports/ci.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always() && steps.changes.outputs.run == 'true'
+        if: always()
         with:
           name: prompt-eval-report
           path: evaluation/reports/ci.json

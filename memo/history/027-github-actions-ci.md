@@ -16,8 +16,7 @@ remote ができたので、operations.md §9.1 の「Cloud Build に一本化�
 
 - `ci.yml`: lint (pre-commit 全フック・全履歴 gitleaks・mypy) / test (エミュレータ込み pytest と
   ガードレールのカバレッジ 95% 以上) / docker build
-- `prompt-eval.yml`: 全 PR で起動し、プロンプト・評価まわりの変更がある場合だけ実 LLM で
-  ゴールデンセット評価
+- `prompt-eval.yml`: 実 LLM のゴールデンセット評価. 手動起動のみ
 - `dependabot.yml`: Action (SHA 固定) と uv 依存を dev 向けに週次更新
 - デプロイは従来どおり Cloud Build の手動実行
 
@@ -27,11 +26,11 @@ remote ができたので、operations.md §9.1 の「Cloud Build に一本化�
   リリースバイナリをチェックサム検証して履歴全体を走査するステップを別に置いた。
   Docker イメージ版は worktree や所有者チェックで git を読めず「0 bytes」で成功するため使わない
 - フェイク LLM での評価は固定献立のため G101 (直近重複) が必ず落ちる。CI の評価は実 LLM に限定
-- プロンプト評価をパス条件で起動すると、対象外 PR で必須チェックが報告されず永久に待ちになる。
-  全 PR で起動して、対象外なら実 LLM を呼ばずに成功させる
+- 当初は全 PR で起動しプロンプト変更時だけ実 LLM を呼ぶ形にしたが、API 料金が二重にかかる
+  (6.3 でローカル評価が必須) ため、手動起動のみに変更し必須チェックからも外した
 - docker-compose のヘルスチェックが wget を使っていたが、イメージに wget / curl が無く常に
   unhealthy だった。node で Firestore (8080) と Auth (9099) の応答を確認する形に修正
 
 ## 残課題
 
-- リポジトリ Secret `ANTHROPIC_API_KEY` の登録 (未登録のままプロンプトを変えた PR は評価で失敗する)
+- CI で評価を手動起動したくなったら、リポジトリ Secret `ANTHROPIC_API_KEY` を登録する
