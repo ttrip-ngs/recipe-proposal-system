@@ -13,6 +13,8 @@ from typing import Any
 
 import yaml
 
+from recipe_system.text_normalize import fold_key
+
 DICTIONARIES_DIR = Path(__file__).parent / "dictionaries"
 
 
@@ -20,7 +22,10 @@ DICTIONARIES_DIR = Path(__file__).parent / "dictionaries"
 class NormalizerDictionary:
     """canonical <-> alias と allergen_group <-> canonical の双方向マップ."""
 
+    # 手順の文章検査に使う語 (小文字化のみ) -> canonical. 部分一致に使うため畳まない
     alias_to_canonical: dict[str, str]
+    # 食材名の照合キー (text_normalize.fold_key) -> canonical. normalize / is_known が引く
+    lookup: dict[str, str]
     canonical_to_allergen_groups: dict[str, frozenset[str]]
     allergen_group_members: dict[str, frozenset[str]]
     aliases_version: str
@@ -37,10 +42,12 @@ class NormalizerDictionary:
         持っていてもグループ名 (例: "ナッツ") を持っていても集合演算で
         ヒットする (個別アレルギー指定と一括グループ指定の双方に対応).
 
+        照合は ``fold_key`` (NFKC・空白・大小文字・カタカナ/ひらがなの違いを吸収) で行い,
+        見つからなければ括弧書きを除いて引き直す (「卵 (溶いておく)」-> 卵. 全角括弧も NFKC で同様).
+
         未知食材は canonical=raw_name, allergen_tags=frozenset() を返す.
         """
-        key = raw_name.strip().lower()
-        canonical = self.alias_to_canonical.get(key, raw_name.strip())
+        canonical = self._resolve(raw_name) or raw_name.strip()
         groups = self.canonical_to_allergen_groups.get(canonical, frozenset())
         if canonical in self.canonical_to_allergen_groups:
             return canonical, groups | {canonical}
@@ -62,10 +69,14 @@ class NormalizerDictionary:
         return {t: c for t, c in terms.items() if t not in self.text_match_exclude}
 
     def is_known(self, raw_name: str) -> bool:
-        key = raw_name.strip().lower()
-        if key in self.alias_to_canonical:
+        if self._resolve(raw_name) is not None:
             return True
         return raw_name.strip() in self.canonical_to_allergen_groups
+
+    def _resolve(self, raw_name: str) -> str | None:
+        return self.lookup.get(fold_key(raw_name)) or self.lookup.get(
+            fold_key(raw_name, drop_brackets=True)
+        )
 
 
 @dataclass
@@ -88,18 +99,22 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
     allergens_raw = _load_yaml(base / "allergens.yaml")
 
     alias_to_canonical: dict[str, str] = {}
+    lookup: dict[str, str] = {}
     canonical_set: set[str] = set()
     for entry in aliases_raw.get("entries", []):
         canonical = entry["canonical"]
         canonical_set.add(canonical)
         for term in [canonical, *entry.get("aliases", [])]:
-            key = term.lower()
-            registered = alias_to_canonical.setdefault(key, canonical)
+            alias_to_canonical[term.lower()] = canonical
+            key = fold_key(term)
+            registered = lookup.setdefault(key, canonical)
             # 後勝ちで上書きすると, 片方の canonical が持つアレルゲングループが黙って
             # 失われる (味噌が 大豆 と 味噌 に二重登録されていた不具合). 起動時に止める.
+            # 照合キーで比べるため「エビ」と「えび」のような表記違いの衝突も検出する.
             if registered != canonical:
                 raise ValueError(
-                    f"aliases.yaml: {key!r} が {registered!r} と {canonical!r} に重複登録されている"
+                    f"aliases.yaml: {term!r} が {registered!r} と {canonical!r} に"
+                    "重複登録されている"
                 )
 
     allergen_group_members: dict[str, frozenset[str]] = {}
@@ -113,6 +128,7 @@ def load_dictionary(directory: Path | None = None) -> NormalizerDictionary:
 
     return NormalizerDictionary(
         alias_to_canonical=alias_to_canonical,
+        lookup=lookup,
         canonical_to_allergen_groups={
             k: frozenset(v) for k, v in canonical_to_allergen_groups.items()
         },

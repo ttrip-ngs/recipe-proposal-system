@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -63,6 +62,7 @@ from recipe_system.services.suggestion_common import (
     parse_llm_json,
     recipe_to_mapping,
 )
+from recipe_system.text_normalize import fold_key
 
 logger = get_logger(__name__)
 
@@ -578,7 +578,7 @@ def _merge_day(
             raise LLMResponseParseError(
                 f"食材詳細に index={skeleton_dish.index} ({skeleton_dish.name}) がありません"
             )
-        if _normalize_name(detail_dish.name) != _normalize_name(skeleton_dish.name):
+        if fold_key(detail_dish.name) != fold_key(skeleton_dish.name):
             logger.warning(
                 "weekly.detail.name_mismatch",
                 day_offset=skeleton_day.day_offset,
@@ -601,11 +601,6 @@ def _merge_day(
             )
         )
     return tuple(merged)
-
-
-def _normalize_name(name: str) -> str:
-    """料理名の照合用に NFKC 正規化して空白を除去する."""
-    return "".join(unicodedata.normalize("NFKC", name).split())
 
 
 def _week_start_label(week_start: date) -> str:

@@ -18,37 +18,38 @@ import yaml
 
 from recipe_system.domain import MealPlan
 from recipe_system.observability.logging import get_logger
+from recipe_system.text_normalize import fold_key
 
 logger = get_logger(__name__)
 
 DATA_DIR = Path(__file__).parent / "data"
 
-# 容量・重量系の単位 -> (基本単位, 倍率)
+# 容量・重量系の単位 -> (基本単位, 倍率). 照合キー (_norm) で引くため, キーも畳んで持つ
 _MEASURE_UNITS: dict[str, tuple[str, float]] = {
-    "g": ("g", 1.0),
-    "グラム": ("g", 1.0),
-    "kg": ("g", 1000.0),
-    "ml": ("ml", 1.0),
-    "cc": ("ml", 1.0),
-    "l": ("ml", 1000.0),
-    "大さじ": ("ml", 15.0),
-    "小さじ": ("ml", 5.0),
-    "カップ": ("ml", 200.0),
+    fold_key(unit): v
+    for unit, v in {
+        "g": ("g", 1.0),
+        "グラム": ("g", 1.0),
+        "kg": ("g", 1000.0),
+        "ml": ("ml", 1.0),
+        "cc": ("ml", 1.0),
+        "l": ("ml", 1000.0),
+        "大さじ": ("ml", 15.0),
+        "小さじ": ("ml", 5.0),
+        "カップ": ("ml", 200.0),
+    }.items()
 }
 
 # 統計の単位表記 (例: "1kg", "100g", "1本・1,000mL", "1パック・10個") の規格量部分
 _PER_RE = re.compile(r"^([\d,.]+)\s*(kg|g|ml|l|個|枚)$")
 # NFKC 正規化後に適用するため全角括弧も半角として扱える
-_BRACKETS_RE = re.compile(r"\(.*?\)")
 
 CostStatus = Literal["priced", "pantry", "unpriced"]
 
 
 def _norm(text: str) -> str:
-    """照合用の正規化: NFKC + 括弧書き除去 + 空白除去 + 小文字化."""
-    s = unicodedata.normalize("NFKC", text)
-    s = _BRACKETS_RE.sub("", s)
-    return "".join(s.split()).lower()
+    """照合用の正規化: 括弧書き (「わかめ (乾燥)」の補足) を除いた照合キー."""
+    return fold_key(text, drop_brackets=True)
 
 
 def parse_per(unit_label: str) -> tuple[float, str] | None:

@@ -184,3 +184,44 @@ def test_大文字小文字違いの重複登録もロードを失敗させる(t
     )
     with pytest.raises(ValueError, match="egg"):
         load_dictionary(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("raw", "canonical", "group"),
+    [
+        ("タマゴ", "卵", "卵"),
+        ("ﾀﾏｺﾞ", "卵", "卵"),
+        ("\uff25\uff27\uff27", "卵", "卵"),
+        ("卵\uff08溶いておく\uff09", "卵", "卵"),
+        ("卵 (Mサイズ)", "卵", "卵"),
+        ("バター\uff08有塩\uff09", "乳", "乳"),
+        ("むきエビ", "エビ", "甲殻類"),
+        ("鶏肉\uff08もも\uff09", "鶏肉", "肉類"),
+    ],
+)
+def test_表記違いと括弧書きがあってもアレルゲンタグが付く(
+    raw: str, canonical: str, group: str
+) -> None:
+    # 以前は lower() の完全一致のみで, これらはすべてタグ無しの未知食材になっていた
+    d = load_dictionary()
+    got_canonical, tags = d.normalize(raw)
+    assert got_canonical == canonical
+    assert group in tags
+    assert d.is_known(raw)
+
+
+def test_カタカナとひらがなの違いだけの重複登録もロードを失敗させる(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text(
+        'version: "t"\n'
+        "entries:\n"
+        "  - canonical: エビ\n"
+        "    aliases: [えび]\n"
+        "  - canonical: 小エビ類\n"
+        "    aliases: [エビ]\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "allergens.yaml").write_text(
+        'version: "t"\ngroups:\n  - name: 甲殻類\n    members: [エビ]\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="エビ"):
+        load_dictionary(tmp_path)

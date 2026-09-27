@@ -85,10 +85,19 @@ groups:
 
 LLM 出力の食材名 `raw_name` を canonical 名に変換し、所属する allergen_group の集合を付与する。
 
+照合は `recipe_system.text_normalize.fold_key` で行う。NFKC（全角英数・半角カナを揃える）、
+空白除去、小文字化、カタカナのひらがな化をした照合キーで辞書を引き、見つからなければ括弧書きを
+除いて引き直す。これで「タマゴ」「ﾀﾏｺﾞ」「卵（溶いておく）」「むきエビ」が `卵` / `エビ` に当たる
+（2026-09 以前は `lower()` の完全一致のみで、これらはすべてタグ無しの未知食材になっていた）。
+同じ照合キーを買い物辞書・価格対応表・料理名の突合でも使う。
+
 ```
 def normalize(raw_name: str) -> Ingredient:
-    lower = raw_name.strip().lower()
-    canonical = ALIAS_INDEX.get(lower) or raw_name
+    canonical = (
+        LOOKUP.get(fold_key(raw_name))
+        or LOOKUP.get(fold_key(raw_name, drop_brackets=True))
+        or raw_name
+    )
     allergen_tags = set()
     for group_name, members in ALLERGEN_GROUPS.items():
         if canonical in members:
@@ -153,7 +162,12 @@ LLM が生成する作り方 (`steps`) は自由文のため、食材リスト�
 
 1. メンバーの `allergens` (グループ名 / canonical 名) から、対象 canonical と全エイリアスを
    集める (`NormalizerDictionary.text_terms_for`)。家族のアレルギーに関係する語だけに絞る
-2. 各ステップの文章 (小文字化) にその語が部分一致すれば `block` (`reason` に該当ステップを含める)
+2. 各ステップの文章 (NFKC + 小文字化) にその語が部分一致すれば `block` (`reason` に該当ステップを含める)
+
+同じ検査を、辞書に無い食材 (`allergen_tags` が空) の名前にも適用する。「溶き卵」「鶏ひき肉」の
+ような複合語は照合キーの完全一致では引けず、タグ無しで素通りするため。辞書にある食材は
+タグで判定済みなので対象外とし、二重に報告しない。部分一致の語は手順と同じく畳まない
+（「カニ」と「かに」を同じ語にすると、除外語「かに」でカタカナの「カニ」まで検出できなくなる）。
 
 日本語は分かち書きされないため部分一致になり、短い語は無関係な語の一部として誤検出する
 (「フライパン」の「パン」、「なめらかに」の「かに」など)。これは `aliases.yaml` の

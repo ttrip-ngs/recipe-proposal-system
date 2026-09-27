@@ -173,3 +173,15 @@ def test_同梱の価格表と対応表が読み込める() -> None:
     mapping = _load_yaml(DATA_DIR / "ingredient_price_map.yaml")
     missing = [e["code"] for e in mapping["entries"] if e["code"] not in prices["items"]]
     assert missing == []
+
+
+def test_カタカナ表記の食材名も価格を引ける(book: PriceBook) -> None:
+    # 対応表は「じゃがいも」「牛こま」の表記で持つ. 照合キーでカタカナ表記も同じ銘柄に当たる
+    est = estimate_ingredients(
+        [
+            {"name": "ジャガイモ", "quantity": 1, "unit": "個"},
+            {"name": "牛コマ", "quantity": 100, "unit": "g"},
+        ],
+        book,
+    )
+    assert [i.status for i in est.items] == ["priced", "priced"]

@@ -213,3 +213,43 @@ def test_大豆アレルギーの家族に味噌を使う料理は通さない()
     family = [_member("子", allergens={"大豆"})]
     recipe = _recipe([Ingredient(name="味噌", canonical=canonical, allergen_tags=tags)])
     assert has_blocking_violation(validate_recipe(recipe, family, dictionary))
+
+
+def _normalized(name: str) -> Ingredient:
+    canonical, tags = load_dictionary().normalize(name)
+    return Ingredient(name=name, canonical=canonical, allergen_tags=tags)
+
+
+def test_辞書に無い複合語の食材名にアレルゲンの語があればblockする() -> None:
+    # 「溶き卵」は辞書に無く allergen_tags が空になるが, 名前に「卵」を含む
+    family = [_member("妻", allergens={"卵"})]
+    recipe = _recipe([_normalized("豚こま"), _normalized("溶き卵")])
+    violations = validate_recipe(recipe, family, load_dictionary())
+    assert has_blocking_violation(violations)
+    assert [v.reason for v in violations] == ["食材名にアレルゲン: 卵 (溶き卵)"]
+
+
+def test_辞書に無い食材名がアレルゲンと無関係ならblockしない() -> None:
+    family = [_member("妻", allergens={"卵"})]
+    recipe = _recipe([_normalized("豚こま"), _normalized("ごぼう")])
+    assert validate_recipe(recipe, family, load_dictionary()) == ()
+
+
+def test_辞書にある食材は食材名の部分一致で二重に報告しない() -> None:
+    family = [_member("妻", allergens={"甲殻類"})]
+    recipe = _recipe([_normalized("むきえび")])
+    violations = validate_recipe(recipe, family, load_dictionary())
+    assert len(violations) == 1
+    assert violations[0].reason == "アレルゲン: 甲殻類"
+
+
+def test_全角英字の手順もアレルゲンの語で検出する() -> None:
+    family = [_member("妻", allergens={"卵"})]
+    recipe = Recipe(
+        name="テスト料理",
+        category="主菜",
+        main_ingredient="豚肉",
+        ingredients=(_normalized("豚こま"),),
+        steps=("\uff25\uff27\uff27を割り入れる",),
+    )
+    assert has_blocking_violation(validate_recipe(recipe, family, load_dictionary()))
