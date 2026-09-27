@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # ワークフローの Action は SHA 固定のため、更新 PR で追従する
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: dev
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: dev
+    groups:
+      python-deps:
+        patterns: ["*"]

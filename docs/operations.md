@@ -190,9 +190,17 @@ GCP Billing Alert はあくまで通知であり、アラートが届いた頃�
 
 ### 9.1 CI/CD の選定
 
-Cloud Build に一本化する（GCP 内完結・Artifact Registry 連携・サービスアカウント統合が簡単）。GitHub Actions は併用しない。
+役割で分ける。
 
-現状このリポジトリには git remote が無いため、トリガーは設定せず `gcloud builds submit` の手動実行とする。`cloudbuild.yaml` は lint → typecheck → test → build → push → deploy を 1 本で実行し、テストが落ちればデプロイされない。
+| 仕組み | 役割 | 起動 |
+|---|---|---|
+| GitHub Actions (`.github/workflows/ci.yml`) | PR の品質ゲート: pre-commit 全フック・全履歴 gitleaks・mypy・pytest (Firestore/Auth エミュレータ込み)・ガードレールのカバレッジ 95% 以上・docker build | PR と main / dev への push |
+| GitHub Actions (`.github/workflows/prompt-eval.yml`) | プロンプト変更時のゴールデンセット評価 (実 LLM) | 全 PR (プロンプト・評価まわりの変更が無ければ実 LLM を呼ばずに成功) |
+| Cloud Build (`cloudbuild.yaml`) | 本番デプロイ: lint → typecheck → test → build → push → deploy | `scripts/deploy/deploy.sh` から手動実行 |
+
+リポジトリは GitHub (public) で管理する。Cloud Build のトリガーは設定せず、デプロイは `gcloud builds submit` の手動実行とする。テストが落ちればデプロイされない。
+
+main / dev はブランチ保護で `ci.yml` の各ジョブと `prompt-eval.yml` の通過を必須にしている。Action は SHA 固定で、Dependabot (`.github/dependabot.yml`) が dev 向けに週次で更新 PR を出す。
 
 ### 9.2 デプロイコマンド
 

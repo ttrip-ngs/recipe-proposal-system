@@ -19,7 +19,8 @@ recipe-proposal-system/
 ├── pyproject.toml
 ├── .pre-commit-config.yaml
 ├── Dockerfile                  # Cloud Run 用イメージ
-├── cloudbuild.yaml             # CI/CD
+├── cloudbuild.yaml             # 本番デプロイ (Cloud Build)
+├── .github/workflows/          # PR の CI (GitHub Actions) とプロンプト評価
 ├── src/recipe_system/
 │   ├── main.py                 # FastAPI エントリポイント
 │   ├── config.py               # 環境変数・設定読込
@@ -149,7 +150,7 @@ gcloud run deploy recipe-system --source . --region asia-northeast1
 - プロンプト YAML の `version` フィールドをインクリメントする
 - コミットメッセージに `[prompt]` プレフィックスを付ける
 - ゴールデンセット評価（`evaluation/runner.py`）をローカルで実行し、主要メトリクス（`guard_trigger_rate` など）の退行がないことを確認する
-- CI 側も `[prompt]` 検出時に評価を自動実行する
+- CI 側もプロンプト・評価まわりの変更を検出すると実 LLM で評価を自動実行する（`.github/workflows/prompt-eval.yml`）
 
 ### 6.4 Firestore スキーマ変更時のフロー
 
