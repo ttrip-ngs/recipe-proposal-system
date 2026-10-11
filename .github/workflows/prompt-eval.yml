@@ -2,7 +2,7 @@
 #
 # 評価は API 料金がかかり、CLAUDE.md 6.3 でプロンプト変更時のローカル実行を必須にしているため
 # PR ごとの自動実行はしない. CI 上で確認したいときだけ Actions 画面から起動する.
-# フェイク LLM は固定の献立しか返さず評価にならないため使わない.
+# フェイク LLM での評価は ci.yml の golden-eval ジョブが全 PR で行う (こちらは実 LLM 専用).
 # 実行にはリポジトリ Secret ANTHROPIC_API_KEY が必要.
 name: Prompt eval
 
@@ -40,7 +40,8 @@ jobs:
           uv run python evaluation/runner.py --live \
             --golden evaluation/golden/*.jsonl \
             --prompt-version "${GITHUB_SHA}" \
-            --output evaluation/reports/ci.json
+            --output evaluation/reports/ci.json \
+            --summary "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

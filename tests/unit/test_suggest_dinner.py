@@ -235,9 +235,11 @@ async def test_直近_7_日の履歴はプロンプトの候補から除外さ�
         recent_history=history,
     )
     result = await suggest_dinner(ctx, llm=FakeVertexClient())
-    # フェイククライアントが返すデフォルト料理 (肉じゃが含む) は検証対象ではなく
-    # ここではプロセス完走と成功フラグを検証.
     assert result.succeeded is True
+    # フェイクはプロンプトの直近履歴を避け、事前フィルタ後の候補 (鶏の照り焼き) を優先する
+    names = [d.name for d in result.dishes]
+    assert "肉じゃが" not in names
+    assert "鶏の照り焼き" in names
 
 
 @pytest.mark.asyncio

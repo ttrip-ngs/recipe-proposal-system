@@ -194,7 +194,7 @@ GCP Billing Alert はあくまで通知であり、アラートが届いた頃�
 
 | 仕組み | 役割 | 起動 |
 |---|---|---|
-| GitHub Actions (`.github/workflows/ci.yml`) | PR の品質ゲート: pre-commit 全フック・全履歴 gitleaks・mypy・pytest (Firestore/Auth エミュレータ込み)・ガードレールのカバレッジ 95% 以上・docker build | PR と main / dev への push |
+| GitHub Actions (`.github/workflows/ci.yml`) | PR の品質ゲート: pre-commit 全フック・全履歴 gitleaks・mypy・pytest (Firestore/Auth エミュレータ込み)・ガードレールのカバレッジ 95% 以上・ゴールデンセット評価 (フェイク LLM, 全件合格)・docker build | PR と main / dev への push |
 | GitHub Actions (`.github/workflows/prompt-eval.yml`) | ゴールデンセット評価 (実 LLM) | 手動起動のみ (API 料金がかかるため. 通常はローカルで実行) |
 | Cloud Build (`cloudbuild.yaml`) | 本番デプロイ: lint → typecheck → test → build → push → deploy | `scripts/deploy/deploy.sh` から手動実行 |
 
