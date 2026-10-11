@@ -128,7 +128,7 @@ gcloud auth application-default login
 
 ### 6.3 フェイク LLM モード
 
-`USE_FAKE_LLM=true` の場合は Vertex AI を呼び出さない。`src/recipe_system/llm/client.py` の `FakeVertexClient` が `evaluation/golden/` のサンプルから決定論的にレスポンスを組み立てる。UI 開発・ユニットテスト時はこちらを使い、Vertex AI 課金を避ける。
+`USE_FAKE_LLM=true` の場合は Vertex AI を呼び出さない。`src/recipe_system/llm/fake.py` の `FakeVertexClient` が、プロンプト中の直近履歴を避け候補レシピを優先する決定論的なレスポンスを組み立てる。UI 開発・ユニットテスト・CI のゴールデン評価はこちらを使い、課金を避ける。
 
 ## 7. ローカル統合テスト
 
@@ -273,7 +273,36 @@ playwright-cli goto http://127.0.0.1:8765/
 
 ライト/ダーク両モードは `playwright-cli run-code "async page => await page.emulateMedia({ colorScheme: 'dark' })"` で切替。
 
-## 12. 関連ドキュメント
+## 12. ブランチと CI（積み上げ PR の注意）
+
+PR は dev に向けて出す。作業ブランチは必ず `origin/dev` から切る（`.github/workflows/` は dev 以降にしか無く、初回公開の main から切ると CI 定義を持たない）。
+
+### 12.1 CI が走らない積み上げ PR
+
+`pull_request` イベントの CI は、PR の head を base にマージした結果（`refs/pull/<N>/merge`）にあるワークフロー定義で動く。積み上げ PR（dev 以外のブランチに向けた PR）では、base と head のどちらも `.github/workflows/` を持たないと、チェックが 1 つも報告されない（GitHub 上は「no checks reported」で、失敗ではないため見落としやすい）。head と base が衝突していてマージ結果を作れない場合も同様に走らない。
+
+ワークフロー側では対処できない。
+
+- dev に置いたワークフローは、dev を含まない PR のマージ結果には現れない
+- `pull_request_target` は base ブランチ側の定義を使うため、base に `.github` が無ければ同じく走らない。加えて公開リポジトリで PR の head を checkout して実行するのは危険（Secret を持つ文脈で外部コードが動く）
+- `schedule` / `workflow_dispatch` / `issue_comment` / `workflow_run` などはデフォルトブランチ（main）の定義で動くが、main は CI 導入前で `.github` を持たない。また dev をデフォルトブランチ扱いにする運用でもない
+
+### 12.2 運用
+
+積み上げの一番下（dev に向いた PR の head）から順に dev を取り込み、上へ伝播させる。rebase・force push はしない（merge commit で取り込む）。
+
+```
+# 例: dev <- fix/a (PR #3) <- feature/b (PR #5) <- feature/c (PR #7)
+git switch fix/a      && git merge origin/dev && git push
+git switch feature/b  && git merge fix/a      && git push   # PR #5 で CI が走る
+git switch feature/c  && git merge feature/b  && git push   # PR #7 で CI が走る
+```
+
+- base ブランチ側の更新だけでは PR の CI は再実行されない。head ブランチへの push（synchronize）で走る
+- 各ブランチの担当者（ワークスペース）が自分のブランチで行う。他人のブランチに push しない
+- 取り込み後、各 PR で全ジョブ（lint / test / golden eval / docker build）が報告されていることを確認する
+
+## 13. 関連ドキュメント
 
 - [operations.md](operations.md) - 本番運用
 - [data-model.md](data-model.md) - Firestore スキーマ

@@ -78,6 +78,33 @@ jobs:
         if: failure()
         run: docker compose logs
 
+  # ゴールデンセット評価をフェイク LLM で行う (API 料金なし). 全件合格を必須にする.
+  # 実 LLM (--live) の評価はここでは行わない. prompt-eval.yml の手動起動のみ.
+  golden-eval:
+    name: golden eval (fake LLM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      # 失敗時も metrics と不合格ケースを job summary に出してから非ゼロ終了する
+      - name: ゴールデンセット評価 (fake LLM, 全件合格が必須)
+        run: >-
+          uv run python evaluation/runner.py
+          --golden evaluation/golden/*.jsonl
+          --prompt-version "${GITHUB_SHA}"
+          --output evaluation/reports/ci-fake.json
+          --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: golden-eval-fake-report
+          path: evaluation/reports/ci-fake.json
+          if-no-files-found: ignore
+
   docker-build:
     name: docker build
     runs-on: ubuntu-latest

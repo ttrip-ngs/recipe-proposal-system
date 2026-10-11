@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 import json
 
 from recipe_system.llm.client import FakeVertexClient
@@ -73,3 +74,64 @@ def test_詳細プロンプトなら入力の_index_と_name_をそのまま返�
     # ingredients は min_length=1 を満たす必要がある
     assert all(d["ingredients"] for d in payload["dishes"])
     assert payload["dishes"][0]["ingredients"][0]["name"] == "鶏肉"
+
+
+def _single_day(system: str, user: str = "u") -> list[dict[str, object]]:
+    response = asyncio.run(
+        FakeVertexClient().generate(system=system, user=user, prompt_version="v1")
+    )
+    dishes: list[dict[str, object]] = json.loads(response.raw_text)["dishes"]
+    return dishes
+
+
+def test_単日は直近履歴にある料理を避ける() -> None:
+    """固定献立を返すと直近重複のゴールデンケース (G101) が原理的に通らない回帰の防止."""
+    recent = ["肉じゃが", "豚の生姜焼き", "鶏の照り焼き", "ほうれん草のおひたし"]
+    dishes = _single_day("前置き\n直近 7 日に作った料理: " + " / ".join(recent) + "\n後続")
+
+    assert [d["category"] for d in dishes] == ["主菜", "副菜", "汁物"]
+    assert not {d["name"] for d in dishes} & set(recent)
+
+
+def test_単日は直近履歴でない候補レシピを優先する() -> None:
+    user = (
+        "# 候補レシピ (事前フィルタ済み)\n"
+        "- 筑前煮 (主菜 / 主食材: 鶏肉)\n"
+        "- 白菜の浅漬け (副菜 / 主食材: 白菜)\n"
+    )
+    dishes = _single_day("直近 7 日に作った料理: 筑前煮", user)
+
+    names = [d["name"] for d in dishes]
+    assert "筑前煮" not in names
+    assert names[1] == "白菜の浅漬け"
+    assert dishes[1]["ingredients"] == [{"name": "白菜", "quantity": 200, "unit": "g"}]
+
+
+def test_骨子は直近履歴を避け連続日の主食材を変える() -> None:
+    recent = ["肉じゃが", "鮭の塩焼き", "麻婆豆腐", "豆腐とわかめの味噌汁"]
+    system = "食材リストは出力しません。\n直近 14 日に作った料理: " + " / ".join(recent) + "\n"
+    response = asyncio.run(
+        FakeVertexClient().generate(system=system, user="u", prompt_version="v1")
+    )
+    days = json.loads(response.raw_text)["days"]
+
+    assert len(days) == 7
+    names = {dish["name"] for day in days for dish in day["dishes"]}
+    assert not names & set(recent)
+    mains = [day["dishes"][0]["main_ingredient"] for day in days]
+    assert all(a != b for a, b in itertools.pairwise(mains))
+
+
+def test_既定の献立の食材はすべて辞書に登録済み() -> None:
+    """未登録食材があると評価の unknown_ingredient_rate がフェイク都合で上がる."""
+    from recipe_system.guardrails.dictionary_loader import default_dictionary
+    from recipe_system.llm.fake import _MAIN_POOL, _SIDE_POOL, _SOUP_POOL
+
+    dictionary = default_dictionary()
+    unknown = [
+        name
+        for dish in (*_MAIN_POOL, *_SIDE_POOL, *_SOUP_POOL)
+        for name, _, _ in dish.ingredients
+        if not dictionary.is_known(name)
+    ]
+    assert unknown == []

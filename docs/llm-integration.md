@@ -325,7 +325,7 @@ Pydantic モデルは `src/recipe_system/domain/llm_output.py` に定義する�
 
 ## 9. フェイク LLM モード
 
-ローカル開発・テスト用に `LLM_PROVIDER=fake` (または後方互換の `USE_FAKE_LLM=true`) 時は固定レスポンスを返すフェイククライアントを使う。`src/recipe_system/llm/client.py` に `FakeVertexClient` を実装し、`evaluation/golden/` 配下のサンプルから決定論的に応答を組み立てる。Vertex AI 課金なしで UI 開発・テストが可能。
+ローカル開発・テスト用に `LLM_PROVIDER=fake` (または後方互換の `USE_FAKE_LLM=true`) 時は決定論的なレスポンスを返すフェイククライアントを使う。`src/recipe_system/llm/fake.py` の `FakeVertexClient` は、レンダリング済みプロンプトから直近履歴と候補レシピを読み取り、直近と重ならない料理 (候補レシピ優先、無ければ辞書登録済み食材だけで組んだ既定の献立) を返す。Vertex AI 課金なしで UI 開発・テストが可能。
 
 ## 10. 予算ガード (BudgetGuardedClient)
 

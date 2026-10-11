@@ -39,7 +39,7 @@ uv run python scripts/seed_firestore.py --emulator
 uv run uvicorn recipe_system.main:app --reload
 ```
 
-ブラウザで `http://localhost:8000/login` → 開発者用手動セッション投入 (`/login` の「開発者向け」セクション) でセッション確立 → `/` で「献立を提案してもらう」ボタンを押す。フェイク LLM モードでは固定の和食献立が返る。
+ブラウザで `http://localhost:8000/login` → 開発者用手動セッション投入 (`/login` の「開発者向け」セクション) でセッション確立 → `/` で「献立を提案してもらう」ボタンを押す。フェイク LLM モードでは直近履歴を避けた決定論的な和食献立が返る。
 
 ## 主要コマンド
 
@@ -65,7 +65,7 @@ uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl
 uv run python evaluation/runner.py --golden evaluation/golden/allergen_cases.jsonl --live
 ```
 
-`--live` は Vertex AI に実呼び出しするので課金される。
+`--live` は実 LLM を呼び出すので課金される。`--live` なし (フェイク LLM) の評価は CI でも全 PR で実行され、全件合格が必須。
 
 ### デプロイ (本番)
 

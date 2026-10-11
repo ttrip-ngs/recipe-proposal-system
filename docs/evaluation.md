@@ -38,7 +38,7 @@ template: |
 3. コミットメッセージに `[prompt]` プレフィックスを付ける
 4. ローカルで `uv run python evaluation/runner.py` を実行し、退行がないことを確認
 5. 評価結果（主要メトリクスに退行が無いこと）を PR 本文に記載する
-6. CI での自動評価は行わない（API 料金のため。必要なら §5 の手動起動）
+6. 実 LLM の評価は CI で自動実行しない（API 料金のため。必要なら §5.2 の手動起動）。フェイク LLM の評価は全 PR で自動実行される（§5.1）
 
 ## 3. ゴールデンセット
 
@@ -117,9 +117,12 @@ uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl
 
 主要オプション:
 
-- `--prompt-version v3` - 特定バージョンで実行
-- `--fake-llm` - Vertex AI を呼ばずフェイククライアントで検証
+- `--live` - 実 LLM を呼ぶ（課金あり。`LLM_PROVIDER` で選んだプロバイダ）。未指定時はフェイク LLM
+- `--prompt-version v3` - レポートに記録するプロンプト版（CI ではコミット SHA）
 - `--output evaluation/reports/2026-04-18T10-00.json` - 結果出力先
+- `--summary PATH` - 合否・メトリクス・不合格ケースの Markdown を追記する（CI では `$GITHUB_STEP_SUMMARY`）
+
+フェイク LLM は設定（`.env`）を読まずに動くため、`.env` の無い CI でもそのまま実行できる。
 
 ### 4.2 出力
 
@@ -133,16 +136,20 @@ uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl
   "passed": 7,
   "failed": 1,
   "metrics": {
+    "proposals": 8,
     "guard_trigger_rate": 0.0,
     "warn_rate": 0.125,
     "unknown_ingredient_rate": 0.0
   },
   "cases": [
-    {"case_id": "G001", "passed": true, "violations": []},
-    {"case_id": "G003", "passed": false, "reason": "..."}
+    {"case_id": "G001", "passed": true, "reason": null, "has_proposal": true,
+     "guard_triggered": false, "warn_count": 0, "unknown_ingredients": [], "...": "..."},
+    {"case_id": "G003", "passed": false, "reason": "...", "...": "..."}
   ]
 }
 ```
+
+`metrics` の算出方法は §6 を参照。ケースごとの `guard_triggered` / `warn_count` / `unknown_ingredients` がその元データで、`unknown_ingredients` は辞書追加の週次レビュー（CLAUDE.md 6.6）にも使える。
 
 ### 4.3 判定ロジック
 
@@ -154,11 +161,22 @@ uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl
 
 ## 5. CI 統合
 
-### 5.1 発火条件
+### 5.1 フェイク LLM の評価（全 PR で自動実行）
 
-実 LLM の評価は API 料金がかかるため、PR ごとの自動実行はしない。プロンプト変更時の評価はローカル実行を必須とし（§2.3、CLAUDE.md 6.3）、CI 上で確認したい場合だけ手動で起動する。
+`.github/workflows/ci.yml` の `golden eval (fake LLM)` ジョブが、PR と main / dev への push ごとに以下を実行する。API 料金はかからない。
 
-### 5.2 実行環境
+```
+uv run python evaluation/runner.py --golden evaluation/golden/*.jsonl --output evaluation/reports/ci-fake.json --summary "$GITHUB_STEP_SUMMARY"
+```
+
+- 全件合格を必須とする（1 件でも不合格ならジョブが失敗する）
+- メトリクスと不合格ケースを job summary に出し、レポート JSON をアーティファクト `golden-eval-fake-report` に保存する
+- フェイク LLM は実 LLM と同じくプロンプト中の直近履歴を避け、候補レシピを優先する決定論的な献立を返す。献立の食材は辞書登録済みのものに限り、ゴールデンセットのアレルゲンを含めない。そのためフェイクの評価は「ランナー・サービス層・ガードレール・ケース定義が壊れていないこと」の回帰検出であり、プロンプト品質の評価にはならない（それは §5.2）
+- フェイク評価の結果は `tests/unit/test_evaluation_runner.py` でも全件合格を検査している
+
+### 5.2 実 LLM の評価（手動起動のみ）
+
+実 LLM の評価は API 料金がかかるため、PR ごとの自動実行はしない。自動テスト・CI から実 LLM を呼ぶことはしない。プロンプト変更時の評価はローカル実行を必須とし（§2.3、CLAUDE.md 6.3）、CI 上で確認したい場合だけ手動で起動する。
 
 GitHub Actions の `.github/workflows/prompt-eval.yml`（`workflow_dispatch` のみ）で実行する（[operations.md](operations.md) §9.1）。実 LLM（`LLM_PROVIDER=anthropic`）で以下を実行する。
 
@@ -168,27 +186,28 @@ uv run python evaluation/runner.py --live --golden evaluation/golden/*.jsonl --o
 ```
 
 - リポジトリ Secret `ANTHROPIC_API_KEY` が必要。未登録なら失敗させる
-- フェイク LLM は固定の献立を返すため、履歴重複ケース（G101 など）が原理的に通らず評価の代わりにならない
-- レポート JSON は Actions のアーティファクト `prompt-eval-report` に保存する
+- メトリクスと不合格ケースを job summary に出し、レポート JSON は Actions のアーティファクト `prompt-eval-report` に保存する
 
 ### 5.3 コスト制御
 
 - pre-commit では評価を実行しない（Vertex AI の実呼び出しは重い）
-- PR の全 push で評価するのではなく、`[prompt]` または prompts/ 変更時のみ発火
-- フェイク LLM で一部ケースをカバーし、実呼び出しは必要最小限に絞る
+- 実 LLM の評価は手動起動のみ。全 PR で回すのはフェイク LLM の評価だけ
+- フェイク LLM で回帰を検出し、実呼び出しは必要最小限に絞る
 
 ## 6. メトリクス定義
 
 | メトリクス | 計算式 | 意味 |
 |---|---|---|
-| `guard_trigger_rate` | block 発動提案数 / 総提案数 | プロンプト品質（低いほど良い） |
-| `warn_rate` | warn 付き提案数 / 総提案数 | 嫌い食材取りこぼし指標 |
-| `unknown_ingredient_rate` | 未知食材含む提案数 / 総提案数 | 辞書網羅性指標 |
+| `guard_trigger_rate` | 初回に block 発動した提案数（`retry_count >= 1`） / 総提案数 | プロンプト品質（低いほど良い） |
+| `warn_rate` | 最終提案に warn 違反が付いた提案数 / 総提案数 | 嫌い食材取りこぼし指標 |
+| `unknown_ingredient_rate` | 辞書未登録（`NormalizerDictionary.is_known` が偽）の食材を含む提案数 / 総提案数 | 辞書網羅性指標 |
 | `proposal_acceptance_rate` | accepted=true の提案数 / 総提案数 | UX 品質（Phase 2 以降） |
 | `cooked_rate` | 実際に作った提案数 / 採用提案数 | 提案と現実の乖離（Phase 2 以降） |
 | `satisfaction_5pt` | 5 段階評価の平均 | 家族満足度（Phase 2 以降） |
 
 Cloud Logging のログベース指標として収集する方法は [operations.md](operations.md)。
+
+評価ランナー（`evaluation/runner.py` の `compute_metrics`）では、1 ケースを 1 提案と数える（週間ケースは 7 日分で 1 提案。warn・未知食材は全日を対象にし、block が残って料理が空になった日は未知食材の対象外）。例外で提案が得られなかったケースは不合格として数えるが分母には入れず、`metrics.proposals` に分母を出す。提案が 0 件なら各率は 0.0。
 
 ## 7. 初期ゴールデンレコード例
 

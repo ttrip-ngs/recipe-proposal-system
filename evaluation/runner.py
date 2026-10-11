@@ -5,7 +5,10 @@
     uv run python evaluation/runner.py --golden evaluation/golden/allergen_cases.jsonl --live
     uv run python evaluation/runner.py --golden '...*.jsonl' --output evaluation/reports/run.json
 
-MVP 初期版: フェイク LLM で services.suggest_dinner を呼び、expected_properties を検査する.
+既定はフェイク LLM で services.suggest_dinner / plan_week を呼び、expected_properties を
+検査する (API 料金なし. CI の golden-eval ジョブはこのモード). レポートには
+docs/evaluation.md §6 のメトリクス (guard_trigger_rate / warn_rate /
+unknown_ingredient_rate) を出す.
 --live 指定時は Vertex AI 経由で実呼び出し (課金あり)。どのプロバイダ (Claude/Gemini) を
 使うかは環境変数 LLM_PROVIDER (未指定時は USE_FAKE_LLM から導出) に従う.
 例: ``LLM_PROVIDER=gemini uv run python evaluation/runner.py --golden ... --live``
@@ -17,7 +20,8 @@ import argparse
 import asyncio
 import json
 import sys
-from dataclasses import asdict, dataclass
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -35,7 +39,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from evaluation.schema import ExpectedProperties, GoldenCase, GoldenFamilyProfile  # noqa: E402
 from recipe_system.config import get_settings  # noqa: E402
-from recipe_system.domain import FamilyMember, FamilyProfile  # noqa: E402
+from recipe_system.domain import FamilyMember, FamilyProfile, Violation  # noqa: E402
+from recipe_system.guardrails.dictionary_loader import default_dictionary  # noqa: E402
 from recipe_system.llm.client import (  # noqa: E402
     FakeVertexClient,
     LLMClient,
@@ -46,6 +51,7 @@ from recipe_system.llm.client import (  # noqa: E402
 from recipe_system.llm.factory import Purpose  # noqa: E402
 from recipe_system.services.suggest_dinner import (  # noqa: E402
     DinnerProposal,
+    NormalizedDish,
     SuggestContext,
     suggest_dinner,
 )
@@ -63,6 +69,29 @@ class CaseResult:
     reason: str | None
     violations_count: int
     dishes: list[dict[str, Any]]
+    # 以下はメトリクス算出用. 例外で提案自体が得られなかったケースは has_proposal=False.
+    has_proposal: bool = False
+    # 初回の提案がガードレールで block され、再依頼した (retry_count >= 1)
+    guard_triggered: bool = False
+    # 最終提案 (週間は全日) に付いた warn 違反の件数
+    warn_count: int = 0
+    # 食材正規化辞書に未登録の食材名 (重複なし). 辞書追加の週次レビュー用
+    unknown_ingredients: list[str] = field(default_factory=list)
+
+
+@dataclass
+class Metrics:
+    """docs/evaluation.md §6 のメトリクス.
+
+    分母は提案が得られたケース数 (1 ケース = 1 提案. 週間は 7 日分で 1 提案).
+    例外で提案が得られなかったケースは不合格として数えるが、分母には含めない.
+    提案が 0 件のときは各率を 0.0 とする.
+    """
+
+    proposals: int
+    guard_trigger_rate: float
+    warn_rate: float
+    unknown_ingredient_rate: float
 
 
 @dataclass
@@ -72,7 +101,61 @@ class RunReport:
     total_cases: int
     passed: int
     failed: int
+    metrics: Metrics
     cases: list[CaseResult]
+
+
+def compute_metrics(results: Iterable[CaseResult]) -> Metrics:
+    proposals = [r for r in results if r.has_proposal]
+
+    def rate(count: int) -> float:
+        return count / len(proposals) if proposals else 0.0
+
+    return Metrics(
+        proposals=len(proposals),
+        guard_trigger_rate=rate(sum(1 for r in proposals if r.guard_triggered)),
+        warn_rate=rate(sum(1 for r in proposals if r.warn_count > 0)),
+        unknown_ingredient_rate=rate(sum(1 for r in proposals if r.unknown_ingredients)),
+    )
+
+
+def _warn_count(violations: Iterable[Violation]) -> int:
+    return sum(1 for v in violations if v.severity == "warn")
+
+
+def _unknown_ingredients(dishes: Iterable[NormalizedDish]) -> list[str]:
+    dictionary = default_dictionary()
+    names = {ing.name for dish in dishes for ing in dish.ingredients}
+    return sorted(name for name in names if not dictionary.is_known(name))
+
+
+def render_summary(report: RunReport, *, mode: str) -> str:
+    """GitHub Actions の job summary 用 Markdown (合否・メトリクス・不合格ケース)."""
+    m = report.metrics
+    lines = [
+        f"## ゴールデンセット評価 ({mode})",
+        "",
+        f"合格 {report.passed} / {report.total_cases} (不合格 {report.failed})",
+        "",
+        "| metric | value |",
+        "|---|---|",
+        f"| proposals | {m.proposals} |",
+        f"| guard_trigger_rate | {m.guard_trigger_rate:.3f} |",
+        f"| warn_rate | {m.warn_rate:.3f} |",
+        f"| unknown_ingredient_rate | {m.unknown_ingredient_rate:.3f} |",
+    ]
+    failed = [c for c in report.cases if not c.passed]
+    if failed:
+        lines += ["", "### 不合格ケース", "", "| case | reason |", "|---|---|"]
+        lines += [f"| {c.case_id} | {_table_cell(c.reason or '')} |" for c in failed]
+    unknown = sorted({name for c in report.cases for name in c.unknown_ingredients})
+    if unknown:
+        lines += ["", f"未知食材: {', '.join(unknown)}"]
+    return "\n".join(lines) + "\n"
+
+
+def _table_cell(text: str) -> str:
+    return text.replace("|", "\\|").replace("\n", " ")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -85,6 +168,12 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--prompt-version", default="unknown")
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--summary",
+        type=Path,
+        default=None,
+        help="結果の Markdown を追記するファイル (CI では $GITHUB_STEP_SUMMARY を渡す)",
+    )
     return parser.parse_args()
 
 
@@ -235,6 +324,10 @@ async def _evaluate_single_case(
             {"name": d.name, "category": d.category, "main_ingredient": d.main_ingredient}
             for d in proposal.dishes
         ],
+        has_proposal=True,
+        guard_triggered=proposal.retry_count > 0,
+        warn_count=_warn_count(proposal.violations),
+        unknown_ingredients=_unknown_ingredients(proposal.dishes),
     )
 
 
@@ -277,7 +370,10 @@ async def _evaluate_weekly_case(
         user_request=case.input.user_request,
     )
     llm = _build_llm(use_live, purpose="weekly")
-    detail_llm = _build_llm(use_live, purpose="weekly_detail", model=resolve_detail_model())
+    # 詳細モデルの解決は設定 (.env) を読むため --live 時に限る. Fake 評価は CI の
+    # ように .env の無い環境でも動く必要がある.
+    detail_model = resolve_detail_model() if use_live else None
+    detail_llm = _build_llm(use_live, purpose="weekly_detail", model=detail_model)
     try:
         proposal = await plan_week(ctx, llm=llm, detail_llm=detail_llm)
     except Exception as e:
@@ -306,6 +402,11 @@ async def _evaluate_weekly_case(
             }
             for day in proposal.days
         ],
+        has_proposal=True,
+        guard_triggered=proposal.retry_count > 0,
+        warn_count=_warn_count(v for day in proposal.days for v in day.violations),
+        # block が残った日は dishes が空のため、確定した日の食材だけが対象になる
+        unknown_ingredients=_unknown_ingredients(d for day in proposal.days for d in day.dishes),
     )
 
 
@@ -426,6 +527,7 @@ def main() -> int:
         total_cases=len(results),
         passed=passed,
         failed=failed,
+        metrics=compute_metrics(results),
         cases=results,
     )
 
@@ -437,6 +539,10 @@ def main() -> int:
         with args.output.open("w", encoding="utf-8") as f:
             json.dump(report_dict, f, ensure_ascii=False, indent=2)
         print(f"[written] {args.output}", file=sys.stderr)
+
+    if args.summary:
+        with args.summary.open("a", encoding="utf-8") as f:
+            f.write(render_summary(report, mode="live" if args.live else "fake LLM"))
 
     return 0 if failed == 0 else 1
 
