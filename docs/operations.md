@@ -200,7 +200,7 @@ GCP Billing Alert はあくまで通知であり、アラートが届いた頃�
 
 リポジトリは GitHub (public) で管理する。Cloud Build のトリガーは設定せず、デプロイは `gcloud builds submit` の手動実行とする。テストが落ちればデプロイされない。
 
-main / dev はブランチ保護で `ci.yml` の各ジョブ (lint / test / docker build) の通過を必須にしている。Action は SHA 固定で、Dependabot (`.github/dependabot.yml`) が dev 向けに週次で更新 PR を出す。
+main / dev はブランチ保護で `ci.yml` の各ジョブ (lint / test / golden eval / docker build) の通過を必須にしている。Action は SHA 固定で、Dependabot (`.github/dependabot.yml`) が dev 向けに週次で更新 PR を出す。
 
 ### 9.2 デプロイコマンド
 
